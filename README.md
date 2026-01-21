@@ -20,7 +20,7 @@ by typing "Los" or "-7".
 
 ### HTML
 
-    import 'xin-timezone-picker'
+    import 'xinjs-timezone-picker'
 
 And now you can use:
 
