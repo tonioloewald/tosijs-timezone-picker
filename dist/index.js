@@ -2783,7 +2783,7 @@ var regions = [
 }).filter((region) => region !== undefined);
 
 // src/timezone-picker.ts
-var { fragment, div, option, input, datalist } = elements;
+var { fragment, div, span, option, input, datalist } = elements;
 var SVG_XMLNS = "http://www.w3.org/2000/svg";
 var DATALIST_ID = "-timezone-list-";
 var regionKey = Symbol("region");
@@ -2793,9 +2793,6 @@ var timezoneMap = () => {
   svg.setAttribute("alt", "world timezone map");
   svg.append(...regions.map((region) => {
     const polygon = document.createElementNS(SVG_XMLNS, "polygon");
-    const title = document.createElementNS(SVG_XMLNS, "title");
-    title.textContent = regionId(region);
-    polygon.append(title);
     polygon.setAttribute("points", region.points);
     polygon[regionKey] = region;
     return polygon;
@@ -2838,12 +2835,36 @@ class TimezonePicker extends Component {
       fill: "var(--hover-color, #888)",
       stroke: "var(--hover-color, #888)"
     },
+    "polygon.hover-target": {
+      fill: "var(--hover-target-color, #444)",
+      stroke: "var(--hover-target-color, #444)"
+    },
     "polygon.active": {
-      fill: `var(--active-color, #ccc)`,
-      stroke: `var(--active-color, #ccc)`
+      fill: `var(--active-zone-color, #777)`,
+      stroke: `var(--active-zone-color, #777)`
+    },
+    "polygon.active-target": {
+      fill: `var(--active-color, #333)`,
+      stroke: `var(--active-color, #333)`
     },
     "polygon.offset": {
       filter: `var(--offset-filter, brightness(0.75))`
+    },
+    ".tooltip": {
+      position: "absolute",
+      pointerEvents: "none",
+      background: "var(--tooltip-bg, #000c)",
+      color: "var(--tooltip-color, white)",
+      fontFamily: "var(--font-family, Sans-serif)",
+      fontSize: "var(--tooltip-font-size, 11px)",
+      padding: "1px 8px",
+      borderRadius: "3px",
+      whiteSpace: "nowrap",
+      display: "none",
+      zIndex: "1"
+    },
+    ".tooltip.visible": {
+      display: "block"
     },
     ".zone-name": {
       fontFamily: "var(--font-family, Sans-serif)",
@@ -2866,12 +2887,12 @@ class TimezonePicker extends Component {
     return zoneFromName(this.timezone);
   }
   get region() {
-    return regions.find((rg) => rg.timezone === this.timezone);
+    return regions.find((rg) => rg.timezone === this.timezone) ?? regions.find((rg) => timezoneAliases[rg.timezone] === this.timezone);
   }
   get zoneId() {
     return zoneId(this.zone);
   }
-  content = fragment(div({ class: "map", part: "map" }), input({
+  content = fragment(div({ class: "map", part: "map" }), span({ class: "tooltip", part: "tooltip" }), input({
     title: "timezone name, including GMT offset",
     placeholder: "region/city GMT+x",
     class: "zone-name",
@@ -2880,6 +2901,27 @@ class TimezonePicker extends Component {
   hoverRegion = (event) => {
     const region = event.target[regionKey];
     this.updateRegions(region, "hover");
+    const { map, tooltip } = this.parts;
+    [...map.querySelectorAll("polygon")].forEach((polygon) => {
+      polygon.classList.toggle("hover-target", polygon[regionKey] === region);
+    });
+    if (region) {
+      const polygon = event.target;
+      const polyRect = polygon.getBoundingClientRect();
+      const hostRect = this.getBoundingClientRect();
+      tooltip.textContent = regionId(region);
+      tooltip.classList.add("visible");
+      const tipRect = tooltip.getBoundingClientRect();
+      let x = (polyRect.left + polyRect.right) / 2 - hostRect.left - tipRect.width / 2;
+      let y = polyRect.bottom - hostRect.top + 4;
+      x = Math.max(0, Math.min(x, hostRect.width - tipRect.width));
+      y = Math.max(0, Math.min(y, hostRect.height - tipRect.height));
+      tooltip.style.left = `${x}px`;
+      tooltip.style.top = `${y}px`;
+      tooltip.style.transform = "";
+    } else {
+      tooltip.classList.remove("visible");
+    }
   };
   pickRegion = (event) => {
     const { zoneName } = this.parts;
@@ -2937,7 +2979,11 @@ class TimezonePicker extends Component {
     super.render();
     this.validate();
     this.updateRegions(this.region, "active");
-    const { zoneName } = this.parts;
+    const { map, zoneName } = this.parts;
+    const activeRegion = this.region;
+    [...map.querySelectorAll("polygon")].forEach((polygon) => {
+      polygon.classList.toggle("active-target", polygon[regionKey] === activeRegion);
+    });
     zoneName.value = this.zoneId;
   }
 }
@@ -2950,4 +2996,4 @@ export {
   TimezonePicker
 };
 
-//# debugId=73FC67A697B09A2E64756E2164756E21
+//# debugId=CB4445446C7F782B64756E2164756E21

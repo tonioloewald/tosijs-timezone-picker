@@ -1,6 +1,6 @@
 {
   "name": "tosijs-timezone-picker",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "a lightweight, mobile-friendly, self-contained timezone-picker web-component",
   "source": "src/index.ts",
   "types": "dist/index.d.ts",

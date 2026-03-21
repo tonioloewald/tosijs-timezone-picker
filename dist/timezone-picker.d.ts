@@ -35,12 +35,36 @@ export declare class TimezonePicker extends Component {
             fill: string;
             stroke: string;
         };
+        'polygon.hover-target': {
+            fill: string;
+            stroke: string;
+        };
         'polygon.active': {
+            fill: string;
+            stroke: string;
+        };
+        'polygon.active-target': {
             fill: string;
             stroke: string;
         };
         'polygon.offset': {
             filter: string;
+        };
+        '.tooltip': {
+            position: string;
+            pointerEvents: string;
+            background: string;
+            color: string;
+            fontFamily: string;
+            fontSize: string;
+            padding: string;
+            borderRadius: string;
+            whiteSpace: string;
+            display: string;
+            zIndex: string;
+        };
+        '.tooltip.visible': {
+            display: string;
         };
         '.zone-name': {
             fontFamily: string;

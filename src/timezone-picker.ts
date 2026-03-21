@@ -6,10 +6,11 @@ import {
   zoneId,
   zoneFromName,
   zoneFromId,
+  timezoneAliases,
 } from './timezones'
 import { regions, Region, regionId, zoneFromRegion } from './regions'
 
-const { fragment, div, option, input, datalist } = elements
+const { fragment, div, span, option, input, datalist } = elements
 
 const SVG_XMLNS = 'http://www.w3.org/2000/svg'
 const DATALIST_ID = '-timezone-list-'
@@ -23,10 +24,6 @@ const timezoneMap = (): any => {
   svg.append(
     ...regions.map((region) => {
       const polygon = document.createElementNS(SVG_XMLNS, 'polygon')
-      // of course svg elements don't support the title attribute
-      const title = document.createElementNS(SVG_XMLNS, 'title')
-      title.textContent = regionId(region)
-      polygon.append(title)
       polygon.setAttribute('points', region.points)
       polygon[regionKey] = region
       return polygon
@@ -77,12 +74,36 @@ export class TimezonePicker extends Component {
       fill: 'var(--hover-color, #888)',
       stroke: 'var(--hover-color, #888)',
     },
+    'polygon.hover-target': {
+      fill: 'var(--hover-target-color, #444)',
+      stroke: 'var(--hover-target-color, #444)',
+    },
     'polygon.active': {
-      fill: `var(--active-color, #ccc)`,
-      stroke: `var(--active-color, #ccc)`,
+      fill: `var(--active-zone-color, #777)`,
+      stroke: `var(--active-zone-color, #777)`,
+    },
+    'polygon.active-target': {
+      fill: `var(--active-color, #333)`,
+      stroke: `var(--active-color, #333)`,
     },
     'polygon.offset': {
       filter: `var(--offset-filter, brightness(0.75))`,
+    },
+    '.tooltip': {
+      position: 'absolute',
+      pointerEvents: 'none',
+      background: 'var(--tooltip-bg, #000c)',
+      color: 'var(--tooltip-color, white)',
+      fontFamily: 'var(--font-family, Sans-serif)',
+      fontSize: 'var(--tooltip-font-size, 11px)',
+      padding: '1px 8px',
+      borderRadius: '3px',
+      whiteSpace: 'nowrap',
+      display: 'none',
+      zIndex: '1',
+    },
+    '.tooltip.visible': {
+      display: 'block',
     },
     '.zone-name': {
       fontFamily: 'var(--font-family, Sans-serif)',
@@ -109,6 +130,7 @@ export class TimezonePicker extends Component {
 
   get region(): Region | undefined {
     return regions.find((rg) => rg.timezone === this.timezone)
+      ?? regions.find((rg) => timezoneAliases[rg.timezone] === this.timezone)
   }
 
   get zoneId(): string {
@@ -117,6 +139,7 @@ export class TimezonePicker extends Component {
 
   content = fragment(
     div({ class: 'map', part: 'map' }),
+    span({ class: 'tooltip', part: 'tooltip' }),
     input({
       title: 'timezone name, including GMT offset',
       placeholder: 'region/city GMT+x',
@@ -128,8 +151,30 @@ export class TimezonePicker extends Component {
 
   hoverRegion = (event: Event): void => {
     // @ts-expect-error
-    const region = event.target[regionKey]
+    const region = event.target[regionKey] as Region | undefined
     this.updateRegions(region, 'hover')
+    const { map, tooltip } = this.parts
+    ;[...map.querySelectorAll('polygon')].forEach((polygon) => {
+      polygon.classList.toggle('hover-target', polygon[regionKey] === region)
+    })
+    if (region) {
+      const polygon = event.target as SVGPolygonElement
+      const polyRect = polygon.getBoundingClientRect()
+      const hostRect = this.getBoundingClientRect()
+      tooltip.textContent = regionId(region)
+      tooltip.classList.add('visible')
+      const tipRect = tooltip.getBoundingClientRect()
+      let x = (polyRect.left + polyRect.right) / 2 - hostRect.left - tipRect.width / 2
+      let y = polyRect.bottom - hostRect.top + 4
+      // clamp inside the component
+      x = Math.max(0, Math.min(x, hostRect.width - tipRect.width))
+      y = Math.max(0, Math.min(y, hostRect.height - tipRect.height))
+      tooltip.style.left = `${x}px`
+      tooltip.style.top = `${y}px`
+      tooltip.style.transform = ''
+    } else {
+      tooltip.classList.remove('visible')
+    }
   }
 
   pickRegion = (event: Event): void => {
@@ -201,8 +246,11 @@ export class TimezonePicker extends Component {
     super.render()
     this.validate()
     this.updateRegions(this.region, 'active')
-
-    const { zoneName } = this.parts
+    const { map, zoneName } = this.parts
+    const activeRegion = this.region
+    ;[...map.querySelectorAll('polygon')].forEach((polygon) => {
+      polygon.classList.toggle('active-target', polygon[regionKey] === activeRegion)
+    })
     zoneName.value = this.zoneId
   }
 }
