@@ -88,13 +88,7 @@ await Bun.write('docs/index.html', docsHtml)
 await Bun.write('docs/CNAME', 'timezones.tosijs.net')
 
 // copy static assets from demo/
-for (const asset of ['favicon.ico', 'favicon.png']) {
-  try {
-    cpSync(`demo/${asset}`, `docs/${asset}`)
-  } catch {
-    // skip missing assets
-  }
-}
+cpSync('demo/favicon.svg', 'docs/favicon.svg')
 
 console.log('Built docs/')
 console.log('Build complete.')
