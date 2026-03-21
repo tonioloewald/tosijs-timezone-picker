@@ -1,1 +1,140 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><link rel="icon" href="favicon.bf546c42.ico"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#000000"><link rel="apple-touch-icon" href="favicon.32810a4e.png"><title>xinjs component demo</title><style>@import "https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100;200;300;400;500;600;700;800;900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap";:root{--font-family:"Roboto Slab",sans-serif;--font-size:16px;--brand-color:#088358;--brand-text-color:#ecf3dd;--spacing:10px;--heading-scale:2}@media screen and (width<=800px){:root{--spacing:8px;--heading-scale:1.3}timezone-picker{--scale:1}}@media screen and (height<=800px){:root{--spacing:8px;--heading-scale:1.3}timezone-picker{--scale:1}}*{font-family:var(--font-family);font-size:var(--font-size)}body{margin:0}h1{background:var(--brand-color);color:var(--brand-text-color);font-size:calc(var(--font-size)*var(--heading-scale));padding:var(--spacing);text-align:center;margin:0;font-weight:400}.column{flex-direction:column;align-items:stretch;max-width:100vw;max-height:100vh;display:flex;overflow:hidden}.column>*{max-width:100vw}.bar{gap:var(--spacing);padding:var(--spacing);flex-wrap:wrap;justify-content:center;align-items:center;display:flex}timezone-picker{--active-color:#666;--font-color:black;--hover-color:#888;--map-land:#aaa;--map-ocean:#ccd;--scale:1.5;flex:1;align-self:center}a{background:var(--brand-text-color);color:var(--brand-color);padding:var(--spacing)calc(var(--spacing)*1.5);border-radius:calc(var(--spacing)*.5);text-decoration:none;transition:all .2s ease-out;display:inline-block}a:hover{box-shadow:0 0 0 2px var(--brand-color)}a:active{background:var(--brand-color);color:var(--brand-text-color)}</style></head><body> <noscript>You need to enable JavaScript to run this app.</noscript> <div class="column"> <h1>xinjs &lt;timezone-picker&gt; demo</h1> <div class="bar"> <a href="https://tonioloewald.github.io/xinjs-timezone-picker/"> demo </a> <a href="https://github.com/tonioloewald/xinjs-timezone-picker#readme"> github / docs </a> <a href="https://www.npmjs.com/package/xinjs-timezone-picker"> npm </a> <img alt="bundlejs" src="https://deno.bundlejs.com/?q=xinjs-timezone-picker&badge="> </div> <timezone-picker></timezone-picker> </div> <script src="index.13847506.js" async type="module"></script> </body></html>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="./favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="apple-touch-icon" href="./favicon.png" />
+    <title>tosijs &lt;tosijs-timezone-picker&gt; demo</title>
+    <style>
+      @import url(https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100;200;300;400;500;600;700;800;900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap);
+
+      :root {
+        --font-family: 'Roboto Slab', sans-serif;
+        --font-size: 16px;
+        --brand-color: #EE257B;
+        --brand-text-color: #ECF3DD;
+        --spacing: 10px;
+        --heading-scale: 2;
+        --line-height: calc(var(--font-size) * 1.6);
+      }
+
+      @media screen and (max-width: 800px) {
+        :root {
+          --spacing: 8px;
+          --heading-scale: 1.3;
+        }
+
+        tosijs-timezone-picker {
+          --scale: 1;
+        }
+      }
+
+      @media screen and (max-height: 800px) {
+        :root {
+          --spacing: 8px;
+          --heading-scale: 1.3;
+        }
+
+        tosijs-timezone-picker {
+          --scale: 1;
+        }
+      }
+
+      * {
+        font-family: var(--font-family);
+        font-size: var(--font-size);
+      }
+
+      body { 
+        margin: 0;
+        line-height: vaR(--line-height);
+      }
+
+      h1 {
+        background: var(--brand-color);
+        color: var(--brand-text-color);
+        font-size: calc(var(--font-size) * var(--heading-scale));
+        line-height: calc(var(--line-height) * var(--heading-scale));
+        font-weight: 400;
+        margin: 0;
+        padding: var(--spacing);
+        text-align: center;
+      }
+
+      .column {
+        align-items: stretch;
+        display: flex;
+        flex-direction: column;
+        max-width: 100vw;
+        max-height: 100vh;
+        overflow: hidden;
+      }
+
+      .column > * {
+        max-width: 100vw;
+      }
+
+      .bar {
+        display: flex;
+        gap: var(--spacing);
+        justify-content: center;
+        align-items: center;
+        padding: var(--spacing);
+        flex-wrap: wrap;
+      }
+
+      tosijs-timezone-picker {
+        align-self: center;
+        flex: 1 1;
+        --active-color: #666;
+        --font-color: black;
+        --hover-color: #888;
+        --map-land: #aaa;
+        --map-ocean: #ccd;
+        --scale: 1.5;
+      }
+
+      a {
+        transition: ease-out 0.2s;
+        background: var(--brand-text-color);
+        color: var(--brand-color);
+        display: inline-block;
+        text-decoration: none;
+        padding: var(--spacing) calc(var(--spacing) * 1.5);
+        border-radius: calc(var(--spacing) * 0.5);
+      }
+
+      a:hover {
+        box-shadow: 0 0 0 2px var(--brand-color);
+      }
+
+      a:active {
+        background: var(--brand-color);
+        color: var(--brand-text-color);
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div class="column">
+      <h1>tosijs &lt;tosijs-timezone-picker&gt; demo</h1>
+      <div class="bar">
+        <a href="https://timezones.tosijs.net/">
+          demo
+        </a>
+        <a href="https://github.com/tonioloewald/tosijs-timezone-picker#readme">
+          github / docs
+        </a>
+        <a href="https://www.npmjs.com/package/tosijs-timezone-picker">
+          npm
+        </a>
+        <img alt="bundlejs" src="https://deno.bundlejs.com/?q=tosijs-timezone-picker&badge=">
+      </div>
+      <tosijs-timezone-picker></tosijs-timezone-picker>
+    </div>
+    <script type="importmap">{"imports":{"tosijs":"./tosijs.js"}}</script>
+    <script src="./index.js" async type="module"></script>
+  </body>
+</html>

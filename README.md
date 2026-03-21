@@ -1,17 +1,17 @@
-# xinjs-timezone-picker
+# tosijs-timezone-picker
 
-[demo](https://tonioloewald.github.io/xinjs-timezone-picker/) | [github](https://github.com/tonioloewald/xinjs-timezone-picker#readme) | [npm](https://www.npmjs.com/package/xinjs-timezone-picker) | ![bundlejs](https://deno.bundlejs.com/?q=xinjs-timezone-picker&badge=)
+[demo](https://timezones.tosijs.net/) | [github](https://github.com/tonioloewald/tosijs-timezone-picker#readme) | [npm](https://www.npmjs.com/package/tosijs-timezone-picker) | ![bundlejs](https://deno.bundlejs.com/?q=tosijs-timezone-picker&badge=)
 
 Copyright ©2023 Tonio Loewald
 
 This is a [web-component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) 
-that provides a graphical timezone-picker, inspired by Apple's graphical timezone-picker.
+that provides a graphical timezone picker, inspired by Apple's graphical timezone picker.
 
-`<timezone-picker>` has been made as compact and fast-loading as possible, by keeping the geometry to a minimum,
+`<tosijs-timezone-picker>` has been made as compact and fast-loading as possible, by keeping the geometry to a minimum,
 computing as using data provided by `Intl` where possible, and generating the underlying SVG
 data on-the-fly.
 
-The widget is designed so that the `value` of the `<timezone-picker>` element will always
+The widget is designed so that the `value` of the `<tosijs-timezone-picker>` element will always
 be a valid IANA timezone name, and it supports both a graphical picker and `autocomplete`
 based on the timezone name *and* the GMT offset, so you can get to "America/Los_Angeles"
 by typing "Los" or "-7".
@@ -20,25 +20,25 @@ by typing "Los" or "-7".
 
 ### HTML
 
-    import 'xin-timezone-picker'
+    import 'tosijs-timezone-picker'
 
 And now you can use:
 
-    <timezone-picker timezone="Australia/Sydney"></timezone-picker>
+    <tosijs-timezone-picker timezone="Australia/Sydney"></tosijs-timezone-picker>
 
 ### Programmatically
 
-    import { timezonePicker } from 'xin-timezone-picker'
+    import { timezonePicker } from 'tosijs-timezone-picker'
     document.body.append(timezonePicker())
 
-`timezonePicker` is a standard `xinjs` `ElementCreator`, i.e. a function that takes
+`timezonePicker` is a standard `tosijs` `ElementCreator`, i.e. a function that takes
 `ElementPart` parameters and returns an `element` of the type expected.
 
-You can also obtain TimezonePicker, the class constructor for `<timezone-picker>`.
+You can also obtain TimezonePicker, the class constructor for `<tosijs-timezone-picker>`.
 
 ### timezones, localTimezone, Timezone
 
-Rather than using a static dataset of timezones, <timezone-picker> uses the 
+Rather than using a static dataset of timezones, <tosijs-timezone-picker> uses the 
 [Intl](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl)
 Javascript global to build `timezones` and determine the `localTimezone`. This
 both reduces the size of this component considerably and ensures it will match
@@ -57,9 +57,9 @@ These are respectively of type `Timezone[]` and a `Timezone`, where:
 
 ## Styling
 
-You can style the <timezone-picker> by using [CSS-Variables](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_cascading_variables)
+You can style the <tosijs-timezone-picker> by using [CSS-Variables](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_cascading_variables)
 
-By default, the <timezone-picker> is 400px wide and 231px tall.
+By default, the <tosijs-timezone-picker> is 400px wide and 231px tall.
 
 `--scale` scales the map as a whole.
 

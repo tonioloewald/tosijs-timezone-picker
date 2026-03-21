@@ -1,17 +1,23 @@
 {
-  "name": "xinjs-timezone-picker",
-  "version": "0.4.0",
+  "name": "tosijs-timezone-picker",
+  "version": "0.5.0",
   "description": "a lightweight, mobile-friendly, self-contained timezone-picker web-component",
-  "main": "dist/index.js",
-  "types": "dist/types.d.ts",
+  "source": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "exports": {
+    "import": "./dist/index.js",
+    "browser": "./dist/index.js",
+    "default": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  },
   "scripts": {
-    "start": "rm -rf www && bun parcel demo/index.html --dist-dir www -p 8777",
-    "build": "bun test && rm -rf docs && bun parcel build --public-url .",
-    "test": "bun test",
-    "update": "bun install"
+    "start": "bun --watch dev.ts",
+    "build": "bun build.ts",
+    "test": "bun test"
   },
   "keywords": [
-    "xinjs",
+    "tosijs",
+    "custom-elements",
     "web-components",
     "javascript",
     "typescript",
@@ -22,17 +28,14 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tonioloewald/xinjs-timezone-picker.git"
+    "url": "https://github.com/tonioloewald/tosijs-timezone-picker.git"
   },
   "devDependencies": {
-    "@parcel/packager-ts": "^2.9.3",
-    "@parcel/transformer-typescript-types": "^2.9.3",
     "bun-types": "latest",
-    "parcel": "latest",
     "typescript": "^5.0.4"
   },
   "peerDependencies": {
-    "xinjs": "^0.4.14"
+    "tosijs": "^1.5.2"
   },
   "files": [
     "/cdn",
@@ -40,28 +43,5 @@
     "/LICENSE",
     "/README.md"
   ],
-  "type": "module",
-  "targets": {
-    "docs": {
-      "context": "browser",
-      "distDir": "docs",
-      "source": "demo/index.html",
-      "optimize": true
-    },
-    "dist": {
-      "context": "browser",
-      "source": "src/index.ts",
-      "isLibrary": true,
-      "distDir": "dist",
-      "outputFormat": "esmodule"
-    },
-    "cdn": {
-      "context": "browser",
-      "source": "src/index.ts",
-      "distDir": "cdn",
-      "optimize": true,
-      "isLibrary": true,
-      "outputFormat": "esmodule"
-    }
-  }
+  "type": "module"
 }

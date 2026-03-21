@@ -1,4 +1,4 @@
-import {timezones, Timezone} from './timezones'
+import {timezones, Timezone, timezoneAliases} from './timezones'
 export interface Region {
   timezone: string
   abbr: string
@@ -16,7 +16,10 @@ export const regionId = (region: Region): string => {
 }
 
 export const zoneFromRegion = (region: {timezone: string}): Timezone => {
-  return timezones.find(tz => tz.name === region.timezone) as Timezone
+  const alias = timezoneAliases[region.timezone]
+  return (timezones.find(tz => tz.name === region.timezone)
+    ?? timezones.find(tz => tz.name === alias)
+    ?? timezones.find(tz => tz.name === timezoneAliases[alias])) as Timezone
 }
 
 export const regions: Region[] = [
@@ -45,7 +48,7 @@ export const regions: Region[] = [
     abbr: "CET"
   },
   {
-    timezone: "Africa/Asmera",
+    timezone: "Africa/Asmara",
     country: "ER",
     points: "306,104,304,100,301,101,301,105,303,105,306,105,309,108,310,107,306,104",
     abbr: "EAT"
@@ -597,7 +600,7 @@ export const regions: Region[] = [
     abbr: "MST"
   },
   {
-    timezone: "America/Coral_Harbour",
+    timezone: "America/Edmonton",
     country: "",
     points: "131,33,130,34,131,37,135,36,137,37,139,36,136,36,136,35,131,33",
     abbr: "EST"
@@ -699,7 +702,7 @@ export const regions: Region[] = [
     abbr: "AST"
   },
   {
-    timezone: "America/Godthab",
+    timezone: "America/Nuuk",
     country: "GL",
     points: "188,42,189,41,191,40,190,38,191,37,194,37,193,35,198,33,202,33,205,30,213,30,219,28,213,27,209,27,210,26,212,25,216,26,215,24,212,24,212,23,216,23,214,22,219,23,222,22,219,22,224,22,219,21,223,21,223,20,218,20,219,14,222,14,229,13,234,12,228,11,217,13,221,11,213,12,216,11,204,11,220,10,214,10,214,9,196,9,199,10,186,10,191,11,188,11,180,10,181,12,176,11,166,11,166,12,162,12,156,13,162,14,158,15,161,19,169,20,172,21,170,22,172,23,174,24,173,26,176,26,179,26,179,27,174,27,180,28,179,30,180,31,176,30,175,31,180,32,175,32,176,33,177,34,177,35,180,35,178,36,180,38,182,39,183,41,187,40,186,41,188,42",
     abbr: "WGT"
@@ -999,7 +1002,7 @@ export const regions: Region[] = [
     abbr: "UYT"
   },
   {
-    timezone: "America/Montreal",
+    timezone: "America/Toronto",
     country: "",
     points: "146,63,151,63,155,58,159,58,160,57,157,57,149,61,152,60,155,57,158,55,167,55,171,53,161,53,161,52,158,53,158,51,156,52,156,50,159,49,161,48,162,45,160,43,156,45,154,45,154,43,153,42,153,40,151,39,148,38,146,39,142,38,142,40,143,42,141,44,143,44,144,47,139,49,140,50,140,53,139,59,141,61,144,62,147,62,146,63",
     abbr: "EST"
@@ -1023,7 +1026,7 @@ export const regions: Region[] = [
     abbr: "EST"
   },
   {
-    timezone: "America/Nipigon",
+    timezone: "America/Toronto",
     country: "CA",
     points: "128,56,128,58,126,58,126,56",
     abbr: "EST"
@@ -1083,19 +1086,19 @@ export const regions: Region[] = [
     abbr: "EST"
   },
   {
-    timezone: "America/Pangnirtung",
+    timezone: "America/Iqaluit",
     country: "CA",
     points: "156,10,156,12,165,11,160,10,156,10",
     abbr: "EST"
   },
   {
-    timezone: "America/Pangnirtung",
+    timezone: "America/Iqaluit",
     country: "CA",
     points: "156,34,156,37,159,36,160,35,157,35,156,34",
     abbr: "EST"
   },
   {
-    timezone: "America/Pangnirtung",
+    timezone: "America/Iqaluit",
     country: "CA",
     points: "156,30,156,33,159,34,162,35,163,34,165,32,160,31,156,30",
     abbr: "EST"
@@ -1137,7 +1140,7 @@ export const regions: Region[] = [
     abbr: "AST"
   },
   {
-    timezone: "America/Rainy_River",
+    timezone: "America/Winnipeg",
     country: "CA",
     points: "120,56,120,58,118,58,118,56",
     abbr: "CST"
@@ -1215,7 +1218,7 @@ export const regions: Region[] = [
     abbr: "ACT"
   },
   {
-    timezone: "America/Santa_Isabel",
+    timezone: "America/Tijuana",
     country: "MX",
     points: "91,80,88,80,89,84,93,86,91,83,91,80",
     abbr: "PST"
@@ -1317,7 +1320,7 @@ export const regions: Region[] = [
     abbr: "CST"
   },
   {
-    timezone: "America/Thunder_Bay",
+    timezone: "America/Toronto",
     country: "CA",
     points: "127,57,127,59,125,59,125,57",
     abbr: "EST"
@@ -1371,31 +1374,31 @@ export const regions: Region[] = [
     abbr: "AKST"
   },
   {
-    timezone: "America/Yellowknife",
+    timezone: "America/Edmonton",
     country: "CA",
     points: "83,31,81,30,81,28,79,28,76,29,72,27,67,28,70,28,64,29,64,28,60,29,61,32,64,32,66,33,66,35,69,36,70,39,74,41,77,40,78,42,108,42,108,36,97,35,95,34,92,34,83,31",
     abbr: "MST"
   },
   {
-    timezone: "America/Yellowknife",
+    timezone: "America/Edmonton",
     country: "CA",
     points: "88,17,79,19,83,20,86,18,86,19,89,18,88,17",
     abbr: "MST"
   },
   {
-    timezone: "America/Yellowknife",
+    timezone: "America/Edmonton",
     country: "CA",
     points: "84,22,81,21,77,22,78,23,75,25,79,26,83,26,85,24,90,23,87,22,84,22",
     abbr: "MST"
   },
   {
-    timezone: "America/Yellowknife",
+    timezone: "America/Edmonton",
     country: "CA",
     points: "91,19,88,20,96,20,91,21,93,22,97,21,97,20,91,19",
     abbr: "MST"
   },
   {
-    timezone: "America/Yellowknife",
+    timezone: "America/Edmonton",
     country: "CA",
     points: "90,23,86,24,86,26,87,27,95,27,87,28,97,28,97,24,96,24,93,24,90,23",
     abbr: "MST"
@@ -1515,7 +1518,7 @@ export const regions: Region[] = [
     abbr: "BNT"
   },
   {
-    timezone: "Asia/Choibalsan",
+    timezone: "Asia/Ulaanbaatar",
     country: "MN",
     points: "412,61,415,60,415,58,411,59,410,58,412,56,409,55,406,56,407,59,405,59,406,62,408,63,412,61",
     abbr: "CHOT"
@@ -1575,7 +1578,7 @@ export const regions: Region[] = [
     abbr: "EET"
   },
   {
-    timezone: "Asia/Saigon",
+    timezone: "Asia/Ho_Chi_Minh",
     country: "VN",
     points: "397,112,398,110,401,109,402,107,401,104,397,99,398,96,400,95,398,93,392,94,395,96,394,98,396,99,400,104,399,108,396,110,395,113,397,112",
     abbr: "ICT"
@@ -1647,13 +1650,13 @@ export const regions: Region[] = [
     abbr: "XJT"
   },
   {
-    timezone: "Asia/Katmandu",
+    timezone: "Asia/Kathmandu",
     country: "NP",
     points: "368,86,368,85,363,83,361,85,369,88,372,88,372,86,368,86",
     abbr: "NPT"
   },
   {
-    timezone: "Asia/Calcutta",
+    timezone: "Asia/Kolkata",
     country: "IN",
     points: "362,106,362,103,364,101,370,97,372,94,374,95,373,91,374,90,372,89,373,88,375,90,378,90,378,92,379,95,380,92,381,92,382,88,385,87,384,84,381,84,379,86,377,86,378,88,374,88,373,86,372,88,369,88,361,85,363,83,359,82,360,80,360,77,358,76,353,77,353,79,355,80,354,82,350,86,347,87,349,91,346,91,345,92,347,94,348,96,351,95,352,103,356,113,357,114,361,111,362,106",
     abbr: "IST"
@@ -1809,7 +1812,7 @@ export const regions: Region[] = [
     abbr: "QYZT"
   },
   {
-    timezone: "Asia/Rangoon",
+    timezone: "Asia/Yangon",
     country: "MM",
     points: "386,104,387,102,385,99,386,97,389,97,391,95,388,94,387,91,385,92,387,89,386,85,385,87,382,88,381,92,380,92,378,96,381,98,381,103,383,102,386,102,386,106,387,107,387,111,388,109,388,106,386,104",
     abbr: "MMT"
@@ -2013,7 +2016,7 @@ export const regions: Region[] = [
     abbr: "ACDT"
   },
   {
-    timezone: "Australia/Currie",
+    timezone: "Australia/Hobart",
     country: "AU",
     points: "451,179,451,181,449,181,449,179",
     abbr: "AEDT"
@@ -2181,7 +2184,7 @@ export const regions: Region[] = [
     abbr: "EET"
   },
   {
-    timezone: "Europe/Kiev",
+    timezone: "Europe/Kyiv",
     country: "UA",
     points: "304,59,305,59,306,56,303,56,302,55,299,55,297,52,293,53,292,54,284,53,283,55,281,56,285,59,288,58,291,58,292,61,290,60,289,62,291,61,294,60,295,61,299,61,298,58,301,59,304,59",
     abbr: "EET"
@@ -2355,7 +2358,7 @@ export const regions: Region[] = [
     abbr: "CET"
   },
   {
-    timezone: "Europe/Uzhgorod",
+    timezone: "Europe/Kyiv",
     country: "UA",
     points: "282,56,282,58,280,58,280,56",
     abbr: "EET"
@@ -2409,7 +2412,7 @@ export const regions: Region[] = [
     abbr: "CET"
   },
   {
-    timezone: "Europe/Zaporozhye",
+    timezone: "Europe/Kyiv",
     country: "UA",
     points: "298,59,299,61,302,59,299,58,298,59",
     abbr: "EET"
@@ -2583,7 +2586,7 @@ export const regions: Region[] = [
     abbr: "HST"
   },
   {
-    timezone: "Pacific/Johnston",
+    timezone: "Pacific/Honolulu",
     country: "UM",
     points: "16,101,16,103,14,103,14,101",
     abbr: "HST"
