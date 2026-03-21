@@ -37,10 +37,11 @@ const server = Bun.serve({
       return new Response(patched, { headers: { 'Content-Type': 'text/html' } })
     }
 
-    // serve tosijs module
-    if (path === '/tosijs.js') {
-      return new Response(Bun.file(TOSIJS_MODULE), {
-        headers: { 'Content-Type': 'application/javascript' },
+    // serve tosijs module and its source map
+    if (path === '/tosijs.js' || path === '/module.js.map') {
+      const file = path === '/tosijs.js' ? TOSIJS_MODULE : TOSIJS_MODULE + '.map'
+      return new Response(Bun.file(file), {
+        headers: { 'Content-Type': path.endsWith('.map') ? 'application/json' : 'application/javascript' },
       })
     }
 

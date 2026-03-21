@@ -3,6 +3,7 @@ import { Timezone } from './timezones';
 import { Region } from './regions';
 export declare class TimezonePicker extends Component {
     value: string;
+    private _navRegion;
     static preferredTagName: string;
     static initAttributes: {
         timezone: string;
@@ -20,6 +21,10 @@ export declare class TimezonePicker extends Component {
             background: string;
             flex: string;
             overflow: string;
+            outline: string;
+        };
+        '.map:focus': {
+            boxShadow: string;
         };
         '.map, svg': {
             width: string;
@@ -66,6 +71,17 @@ export declare class TimezonePicker extends Component {
         '.tooltip.visible': {
             display: string;
         };
+        '.sr-only': {
+            position: string;
+            width: string;
+            height: string;
+            padding: string;
+            margin: string;
+            overflow: string;
+            clip: string;
+            whiteSpace: string;
+            border: string;
+        };
         '.zone-name': {
             fontFamily: string;
             position: string;
@@ -87,10 +103,16 @@ export declare class TimezonePicker extends Component {
     get region(): Region | undefined;
     get zoneId(): string;
     content: any;
+    private showTooltip;
+    private hideTooltip;
+    private polygonForRegion;
     hoverRegion: (event: Event) => void;
     pickRegion: (event: Event) => void;
     pickZone: (event: Event) => void;
     focusInput: (event: Event) => void;
+    handleKeydown: (event: KeyboardEvent) => void;
+    private announce;
+    private selectRegion;
     connectedCallback(): void;
     private validate;
     private updateRegions;
