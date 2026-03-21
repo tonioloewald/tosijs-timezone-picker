@@ -85,6 +85,7 @@ const html = await Bun.file('demo/index.html').text()
 const importMap = `<script type="importmap">{"imports":{"tosijs":"./tosijs.js"}}</script>`
 const docsHtml = html.replace('<script ', importMap + '\n    <script ')
 await Bun.write('docs/index.html', docsHtml)
+await Bun.write('docs/CNAME', 'timezones.tosijs.net')
 
 // copy static assets from demo/
 for (const asset of ['favicon.ico', 'favicon.png']) {

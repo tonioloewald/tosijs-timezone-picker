@@ -8,7 +8,7 @@ This is a [web-component](https://developer.mozilla.org/en-US/docs/Web/API/Web_c
 that provides a graphical timezone picker, inspired by Apple's graphical timezone picker.
 
 `<tosijs-timezone-picker>` has been made as compact and fast-loading as possible, by keeping the geometry to a minimum,
-computing as using data provided by `Intl` where possible, and generating the underlying SVG
+using data provided by `Intl` where possible, and generating the underlying SVG
 data on-the-fly.
 
 The widget is designed so that the `value` of the `<tosijs-timezone-picker>` element will always
@@ -52,14 +52,11 @@ These are respectively of type `Timezone[]` and a `Timezone`, where:
       utc: string     // the timezone's UTC offset
     }
 
-> Note that for some reason `parcel` is not recognizing that the `Timezone` interface is
-> exported, so it's not exported.
-
 ## Styling
 
 You can style the <tosijs-timezone-picker> by using [CSS-Variables](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_cascading_variables)
 
-By default, the <tosijs-timezone-picker> is 400px wide and 231px tall.
+By default, the `<tosijs-timezone-picker>` is 400px wide and 231px tall.
 
 `--scale` scales the map as a whole.
 
@@ -72,6 +69,18 @@ By default, the <tosijs-timezone-picker> is 400px wide and 231px tall.
 `--inset`, `--padding`, `--input-bg`, `--input-radius`, position the timezone `<input>`.
 
 `--font-size`, `--font-color`, and `--font-family` control the text of the `<input>`
+
+## Annoyances
+
+I'm using the built-in support for filtered autocomplete in the `<input>` field
+where you type in the timezone manually. I figure most people simply won't use
+this, but for those who do its behavior is highly dependent on the browser implementation.
+E.g. Chrome is absolutely horrible (the menu jumps around randomly as you type) while
+Firefox and Safari work beautifully.
+
+Ideally I'd switch out the `<input>` field for `tosijs-ui`'s editable `<tosi-select>`
+(and implement filtering…) but that would increase the size of this component
+significantly and really Chrome should fix its shit.
 
 ## Acknowledgements
 

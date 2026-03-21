@@ -1,5 +1,4 @@
 /* eslint-disable */
-// @ts-expect-error
 import { test, expect } from 'bun:test'
 import { regions, zoneFromRegion } from './regions'
 import { area, stringToPolygon } from './polygons'

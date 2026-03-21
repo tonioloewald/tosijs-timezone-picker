@@ -2711,7 +2711,13 @@ export const regions: Region[] = [
     points: "6,142,6,144,4,144,4,142",
     abbr: "WFT"
   }
-].map(rg => ({
-  ...rg,
-  offset: zoneFromRegion(rg).offset
-}))
+].map(rg => {
+  const region = zoneFromRegion(rg)
+  if (region === undefined) {
+    console.warn('missing timezone data for', rg)
+  }
+  return region !== undefined ? {
+    ...rg,
+    offset: region.offset
+  } : undefined
+}).filter(region => region !== undefined) as Region[]

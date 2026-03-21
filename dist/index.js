@@ -2771,10 +2771,16 @@ var regions = [
     points: "6,142,6,144,4,144,4,142",
     abbr: "WFT"
   }
-].map((rg) => ({
-  ...rg,
-  offset: zoneFromRegion(rg).offset
-}));
+].map((rg) => {
+  const region = zoneFromRegion(rg);
+  if (region === undefined) {
+    console.warn("missing timezone data for", rg);
+  }
+  return region !== undefined ? {
+    ...rg,
+    offset: region.offset
+  } : undefined;
+}).filter((region) => region !== undefined);
 
 // src/timezone-picker.ts
 var { fragment, div, option, input, datalist } = elements;
@@ -2944,4 +2950,4 @@ export {
   TimezonePicker
 };
 
-//# debugId=832AA248FC85A88064756E2164756E21
+//# debugId=73FC67A697B09A2E64756E2164756E21
