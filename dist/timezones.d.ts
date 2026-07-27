@@ -5,8 +5,9 @@ export interface Timezone {
     offset: number;
 }
 export declare const timezones: Timezone[];
-export declare const localTimezone: Timezone;
+/** Map between deprecated and current IANA timezone names. */
 export declare const timezoneAliases: Record<string, string>;
 export declare const zoneFromName: (name: string) => Timezone | undefined;
 export declare const zoneId: (tz: Timezone) => string;
 export declare const zoneFromId: (id: string) => Timezone | undefined;
+export declare const localTimezone: Timezone;

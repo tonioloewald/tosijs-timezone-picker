@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- NB: the body is NOT hidden until hydration. It used to be (body opacity 0 +
+       a 4s safety-net timeout), because an undefined custom element is
+       display:inline, so the pre-rendered page stacked as bare text and hydration
+       reflowed the whole thing. The cost was a blank screen for as long as the
+       bundle took — ~4.5s on a cheap phone, for content already in the HTML. The
+       tosi-doc-system:not(:defined) rules in the stylesheet now lay the static page
+       out as though the chrome were there, so hydration only ADDS the chrome and
+       nothing moves. Paint immediately; don't hide readable content. -->
+  <!-- Theme, applied BEFORE first paint. Now that we paint the static page rather
+       than hiding it, a dark-mode reader would otherwise get a flash of the light
+       theme until the bundle lands and sets body.darkmode. CSS alone can't do this:
+       an explicit theme choice lives in localStorage. Mirrors applyThemePrefs()
+       (doc-system.ts) — keep the two in step. Fails safe: any error leaves the
+       light default, exactly as before. -->
+  <script>
+    try {
+      var p = JSON.parse(localStorage.getItem('tosi-doc-system-prefs') || '{}')
+      var t = p.theme || 'system'
+      if (t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches))
+        document.documentElement.classList.add('darkmode')
+      if (p.highContrast) document.documentElement.classList.add('high-contrast')
+    } catch (e) {}
+  </script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="/doc-system.css" data-tosi-doc-system />
+  <title>components — tosijs-timezone-picker</title>
+  <meta name="description" content="The custom elements tosijs-timezone-picker registers." />
+  <link rel="canonical" href="https://timezones.tosijs.net/components/" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="tosijs-timezone-picker" />
+  <meta property="og:title" content="components — tosijs-timezone-picker" />
+  <meta property="og:description" content="The custom elements tosijs-timezone-picker registers." />
+  <meta property="og:url" content="https://timezones.tosijs.net/components/" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"components","description":"The custom elements tosijs-timezone-picker registers.","url":"https://timezones.tosijs.net/components/","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"tosijs-timezone-picker","url":"https://timezones.tosijs.net"}}</script>
+  <link rel="icon" href="/favicon.svg" />
+</head>
+<body>
+  <tosi-doc-system docs="/docs.json" config="{&quot;projectName&quot;:&quot;tosijs-timezone-picker&quot;,&quot;projectLinks&quot;:{&quot;tosijs&quot;:&quot;https://tosijs.net&quot;,&quot;github&quot;:&quot;https://github.com/tonioloewald/tosijs-timezone-picker&quot;}}">
+  <article class="doc-content">
+<h1>components</h1>
+<!--{ "description": "The custom elements tosijs-timezone-picker registers." }-->
+
+<p>One element, two shipping shapes: <code>import &#39;tosijs-timezone-picker&#39;</code> registers
+<code>&lt;tosijs-timezone-picker&gt;</code> eagerly, and the same component is published as a
+<a href="https://tosijs.net/blueprint-loader/">tosijs blueprint</a> you can load from a CDN under a
+tag name of your own choosing.</p>
+<!-- toc -->
+<ul>
+<li><a href="/timezone-picker/"><tosijs-timezone-picker></a></li>
+</ul>
+<!-- /toc -->
+
+  </article>
+  <nav class="doc-nav" aria-label="Documentation">
+  <ul>
+    <li><details open><summary><a class="doc-link current" href="/components/" aria-current="page">components</a></summary>
+    <ul>
+      <li><a class="doc-link" href="/timezone-picker/">&lt;tosijs-timezone-picker&gt;</a></li>
+    </ul>
+    </details></li>
+    <li><details><summary><a class="doc-link" href="/reference/">reference</a></summary>
+    <ul>
+      <li><a class="doc-link" href="/index/">exports</a></li>
+      <li><a class="doc-link" href="/regions/">regions</a></li>
+      <li><a class="doc-link" href="/timezones/">timezones</a></li>
+    </ul>
+    </details></li>
+    <li><a class="doc-link" href="/">tosijs-timezone-picker</a></li>
+  </ul>
+  </nav>
+  <ul class="doc-navbar">
+    <li><a href="https://tosijs.net" data-icon="tosi">tosijs</a></li>
+    <li><a href="https://ui.tosijs.net" data-icon="tosi">tosijs-ui</a></li>
+    <li><a href="https://github.com/tonioloewald/tosijs-timezone-picker" data-icon="github">github</a></li>
+    <li><a href="https://www.npmjs.com/package/tosijs-timezone-picker" data-icon="npm">npmjs</a></li>
+  </ul>
+  </tosi-doc-system>
+  <script type="module" src="/hydrate.js"></script>
+</body>
+</html>

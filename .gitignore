@@ -78,6 +78,15 @@ typings/
 
 # mac
 .DS_Store
+# Locally-generated dev-server TLS certificates (mkcert). Never publish.
+tls/
+*.pem
+*.csr
 
-# dev
-www/
+# Intermediate doc-corpus the build extracts to and re-reads
+demo/docs.json
+
+# Doc-site bundle scratch — the served copies live in docs/
+dist/iife.js
+dist/iife.js.map
+dist/hydrate/

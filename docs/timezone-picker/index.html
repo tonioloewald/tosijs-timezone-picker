@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- NB: the body is NOT hidden until hydration. It used to be (body opacity 0 +
+       a 4s safety-net timeout), because an undefined custom element is
+       display:inline, so the pre-rendered page stacked as bare text and hydration
+       reflowed the whole thing. The cost was a blank screen for as long as the
+       bundle took — ~4.5s on a cheap phone, for content already in the HTML. The
+       tosi-doc-system:not(:defined) rules in the stylesheet now lay the static page
+       out as though the chrome were there, so hydration only ADDS the chrome and
+       nothing moves. Paint immediately; don't hide readable content. -->
+  <!-- Theme, applied BEFORE first paint. Now that we paint the static page rather
+       than hiding it, a dark-mode reader would otherwise get a flash of the light
+       theme until the bundle lands and sets body.darkmode. CSS alone can't do this:
+       an explicit theme choice lives in localStorage. Mirrors applyThemePrefs()
+       (doc-system.ts) — keep the two in step. Fails safe: any error leaves the
+       light default, exactly as before. -->
+  <script>
+    try {
+      var p = JSON.parse(localStorage.getItem('tosi-doc-system-prefs') || '{}')
+      var t = p.theme || 'system'
+      if (t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches))
+        document.documentElement.classList.add('darkmode')
+      if (p.highContrast) document.documentElement.classList.add('high-contrast')
+    } catch (e) {}
+  </script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="/doc-system.css" data-tosi-doc-system />
+  <title>&lt;tosijs-timezone-picker&gt;</title>
+  <meta name="description" content="The timezone-picker itself: an interactive SVG world map plus offset-aware autocomplete, shipped as a tosijs blueprint." />
+  <link rel="canonical" href="https://timezones.tosijs.net/timezone-picker/" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="tosijs-timezone-picker" />
+  <meta property="og:title" content="&lt;tosijs-timezone-picker&gt;" />
+  <meta property="og:description" content="The timezone-picker itself: an interactive SVG world map plus offset-aware autocomplete, shipped as a tosijs blueprint." />
+  <meta property="og:url" content="https://timezones.tosijs.net/timezone-picker/" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"\u003ctosijs-timezone-picker>","description":"The timezone-picker itself: an interactive SVG world map plus offset-aware autocomplete, shipped as a tosijs blueprint.","url":"https://timezones.tosijs.net/timezone-picker/","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"tosijs-timezone-picker","url":"https://timezones.tosijs.net"}}</script>
+  <link rel="icon" href="/favicon.svg" />
+</head>
+<body>
+  <tosi-doc-system docs="/docs.json" config="{&quot;projectName&quot;:&quot;tosijs-timezone-picker&quot;,&quot;projectLinks&quot;:{&quot;tosijs&quot;:&quot;https://tosijs.net&quot;,&quot;github&quot;:&quot;https://github.com/tonioloewald/tosijs-timezone-picker&quot;}}">
+  <article class="doc-content">
+<h1><code>&lt;tosijs-timezone-picker&gt;</code></h1>
+<p>A graphical timezone picker inspired by Apple&#39;s, in about 30kB of geometry and no
+timezone dataset at all — the zones come from <a href="/timezones/"><code>Intl</code></a> at runtime.</p>
+<p>Click a region, arrow-key around the map, or type into the field: the field autocompletes
+on <strong>both</strong> the zone name and the GMT offset, so <code>Los</code> and <code>-7</code> both get you to
+<code>America/Los_Angeles</code>. <code>value</code> and <code>timezone</code> always hold a valid IANA timezone name.</p>
+<pre><code class="language-html">&lt;tosijs-timezone-picker timezone=&quot;Australia/Sydney&quot;&gt;&lt;/tosijs-timezone-picker&gt;
+</code></pre>
+<h2>Reading the value</h2>
+<p>The element fires <code>change</code> when the user picks a zone — from the map, the keyboard, or the
+text field.</p>
+<pre><code class="language-html">&lt;tosijs-timezone-picker id=&quot;picker&quot;&gt;&lt;/tosijs-timezone-picker&gt;
+&lt;div class=&quot;readout&quot;&gt;—&lt;/div&gt;
+</code></pre>
+<pre><code class="language-css">.readout {
+  font-family: monospace;
+  padding: 10px 10px 40px;
+}
+</code></pre>
+<pre><code class="language-js">const picker = preview.querySelector(&#39;#picker&#39;)
+const readout = preview.querySelector(&#39;.readout&#39;)
+
+const show = () =&gt; {
+  const { name, abbr, offset } = picker.zone
+  readout.textContent = `${name} — ${abbr} (GMT${offset &gt; 0 ? &#39;+&#39; : &#39;&#39;}${offset || &#39;&#39;})`
+}
+
+picker.addEventListener(&#39;change&#39;, show)
+show()
+</code></pre>
+<h2>Attributes &amp; properties</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>timezone</code></td>
+<td>attribute + property — the IANA name, e.g. <code>&#39;Europe/Berlin&#39;</code>. Defaults to the local zone.</td>
+</tr>
+<tr>
+<td><code>value</code></td>
+<td>property — kept in lock-step with <code>timezone</code>; setting either fires <code>change</code>.</td>
+</tr>
+<tr>
+<td><code>zone</code></td>
+<td>read-only <a href="/timezones/"><code>Timezone</code></a> — <code>{ name, abbr, offset }</code>.</td>
+</tr>
+<tr>
+<td><code>region</code></td>
+<td>read-only <code>Region</code> — the map region backing the current zone, if any.</td>
+</tr>
+</tbody></table>
+<p>Assigning a name the runtime doesn&#39;t know is rejected: <code>value</code> reverts to the last valid
+zone rather than leaving the element in an impossible state.</p>
+<h2>Styling</h2>
+<p>Everything is a CSS custom property, so you can theme the picker from outside the shadow
+DOM. The element is 500×250 at <code>--scale: 1</code>.</p>
+<pre><code class="language-html">&lt;tosijs-timezone-picker class=&quot;lava&quot;&gt;&lt;/tosijs-timezone-picker&gt;
+</code></pre>
+<pre><code class="language-css">.lava {
+  --map-ocean: #1d1f2b;
+  --map-land: #4a4458;
+  --hover-color: #7a6a9a;
+  --active-zone-color: #b4456f;
+  --active-color: #ee257b;
+  --font-color: white;
+  --input-bg: #0006;
+  --tooltip-bg: #ee257bee;
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>variable</th>
+<th>what it does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--scale</code></td>
+<td>scales the whole map (default <code>1</code> → 500×250)</td>
+</tr>
+<tr>
+<td><code>--map-ocean</code>, <code>--map-land</code></td>
+<td>base map colors</td>
+</tr>
+<tr>
+<td><code>--hover-color</code>, <code>--hover-target-color</code></td>
+<td>the hovered offset band, and the region under the pointer</td>
+</tr>
+<tr>
+<td><code>--active-zone-color</code>, <code>--active-color</code></td>
+<td>the selected offset band, and the selected region</td>
+</tr>
+<tr>
+<td><code>--focus-color</code></td>
+<td>keyboard-focus ring on the map</td>
+</tr>
+<tr>
+<td><code>--transition</code></td>
+<td>region color transition</td>
+</tr>
+<tr>
+<td><code>--tooltip-bg</code>, <code>--tooltip-color</code>, <code>--tooltip-font-size</code></td>
+<td>the hover/keyboard tooltip</td>
+</tr>
+<tr>
+<td><code>--inset</code>, <code>--padding</code>, <code>--input-bg</code>, <code>--input-radius</code></td>
+<td>position and shape of the text field</td>
+</tr>
+<tr>
+<td><code>--font-size</code>, <code>--font-color</code>, <code>--font-family</code></td>
+<td>the text field&#39;s type</td>
+</tr>
+</tbody></table>
+<p>The <code>map</code>, <code>tooltip</code>, <code>zoneName</code> and <code>liveRegion</code> shadow parts are exposed for anything
+custom properties can&#39;t reach:</p>
+<pre><code class="language-css">tosijs-timezone-picker::part(zoneName) { letter-spacing: 0.05em; }
+</code></pre>
+<h2>Keyboard &amp; assistive tech</h2>
+<p>The map is focusable. <strong>←/→</strong> step one GMT offset west/east (keeping roughly the same
+latitude), <strong>↑/↓</strong> move between zones within the current offset, north to south. Each move
+announces the zone through a visually-hidden <code>aria-live</code> region and shows the same tooltip
+the mouse does.</p>
+<h2>Consuming it as a blueprint</h2>
+<p>The component is written as a <a href="https://tosijs.net/blueprint-loader/">tosijs blueprint</a> — a
+pure function that receives tosijs and returns a component class. That means it carries no
+copy of tosijs, and <strong>you</strong> choose the tag name, so two versions can coexist on one page:</p>
+<pre><code>&lt;tosi-loader&gt;
+  &lt;tosi-blueprint
+    tag=&quot;my-timezone-picker&quot;
+    src=&quot;https://cdn.jsdelivr.net/npm/tosijs-timezone-picker/dist/blueprint.js&quot;
+  &gt;&lt;/tosi-blueprint&gt;
+&lt;/tosi-loader&gt;
+&lt;my-timezone-picker&gt;&lt;/my-timezone-picker&gt;
+</code></pre>
+<p>…or, if you are already bundling:</p>
+<pre><code class="language-typescript">import { makeComponent } from &#39;tosijs&#39;
+import blueprint from &#39;tosijs-timezone-picker/blueprint&#39;
+
+const { creator } = await makeComponent(&#39;my-timezone-picker&#39;, blueprint)
+document.body.append(creator())
+</code></pre>
+<p>Importing the package normally does exactly this for you, with the tag
+<code>&lt;tosijs-timezone-picker&gt;</code>.</p>
+
+  </article>
+  <nav class="doc-nav" aria-label="Documentation">
+  <ul>
+    <li><details open><summary><a class="doc-link" href="/components/">components</a></summary>
+    <ul>
+      <li><a class="doc-link current" href="/timezone-picker/" aria-current="page">&lt;tosijs-timezone-picker&gt;</a></li>
+    </ul>
+    </details></li>
+    <li><details><summary><a class="doc-link" href="/reference/">reference</a></summary>
+    <ul>
+      <li><a class="doc-link" href="/index/">exports</a></li>
+      <li><a class="doc-link" href="/regions/">regions</a></li>
+      <li><a class="doc-link" href="/timezones/">timezones</a></li>
+    </ul>
+    </details></li>
+    <li><a class="doc-link" href="/">tosijs-timezone-picker</a></li>
+  </ul>
+  </nav>
+  <ul class="doc-navbar">
+    <li><a href="https://tosijs.net" data-icon="tosi">tosijs</a></li>
+    <li><a href="https://ui.tosijs.net" data-icon="tosi">tosijs-ui</a></li>
+    <li><a href="https://github.com/tonioloewald/tosijs-timezone-picker" data-icon="github">github</a></li>
+    <li><a href="https://www.npmjs.com/package/tosijs-timezone-picker" data-icon="npm">npmjs</a></li>
+  </ul>
+  </tosi-doc-system>
+  <script type="module" src="/hydrate.js"></script>
+</body>
+</html>

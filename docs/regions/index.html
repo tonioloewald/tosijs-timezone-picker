@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- NB: the body is NOT hidden until hydration. It used to be (body opacity 0 +
+       a 4s safety-net timeout), because an undefined custom element is
+       display:inline, so the pre-rendered page stacked as bare text and hydration
+       reflowed the whole thing. The cost was a blank screen for as long as the
+       bundle took — ~4.5s on a cheap phone, for content already in the HTML. The
+       tosi-doc-system:not(:defined) rules in the stylesheet now lay the static page
+       out as though the chrome were there, so hydration only ADDS the chrome and
+       nothing moves. Paint immediately; don't hide readable content. -->
+  <!-- Theme, applied BEFORE first paint. Now that we paint the static page rather
+       than hiding it, a dark-mode reader would otherwise get a flash of the light
+       theme until the bundle lands and sets body.darkmode. CSS alone can't do this:
+       an explicit theme choice lives in localStorage. Mirrors applyThemePrefs()
+       (doc-system.ts) — keep the two in step. Fails safe: any error leaves the
+       light default, exactly as before. -->
+  <script>
+    try {
+      var p = JSON.parse(localStorage.getItem('tosi-doc-system-prefs') || '{}')
+      var t = p.theme || 'system'
+      if (t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches))
+        document.documentElement.classList.add('darkmode')
+      if (p.highContrast) document.documentElement.classList.add('high-contrast')
+    } catch (e) {}
+  </script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="/doc-system.css" data-tosi-doc-system />
+  <title>regions — tosijs-timezone-picker</title>
+  <meta name="description" content="The map&#39;s polygon data: what a Region is, how its offset is derived, and why regions can disappear." />
+  <link rel="canonical" href="https://timezones.tosijs.net/regions/" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="tosijs-timezone-picker" />
+  <meta property="og:title" content="regions — tosijs-timezone-picker" />
+  <meta property="og:description" content="The map&#39;s polygon data: what a Region is, how its offset is derived, and why regions can disappear." />
+  <meta property="og:url" content="https://timezones.tosijs.net/regions/" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"regions","description":"The map's polygon data: what a Region is, how its offset is derived, and why regions can disappear.","url":"https://timezones.tosijs.net/regions/","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"tosijs-timezone-picker","url":"https://timezones.tosijs.net"}}</script>
+  <link rel="icon" href="/favicon.svg" />
+</head>
+<body>
+  <tosi-doc-system docs="/docs.json" config="{&quot;projectName&quot;:&quot;tosijs-timezone-picker&quot;,&quot;projectLinks&quot;:{&quot;tosijs&quot;:&quot;https://tosijs.net&quot;,&quot;github&quot;:&quot;https://github.com/tonioloewald/tosijs-timezone-picker&quot;}}">
+  <article class="doc-content">
+<h1>regions</h1>
+<p>The geometry behind the map: ~450 polygons, each tagged with the IANA timezone it belongs
+to. This is the only static data in the package — about 30kB of coordinates — and the
+reason the component needs no timezone dataset.</p>
+<pre><code class="language-typescript">interface Region {
+  timezone: string // IANA name — may be a deprecated one, see timezoneAliases
+  country: string  // ISO 3166-1 alpha-2
+  abbr: string     // the abbreviation the source data recorded
+  points: string   // SVG polygon points, in a 500 x 250 viewBox
+  offset: number   // hours from GMT — NOT in the source data; see below
+}
+</code></pre>
+<h2><code>offset</code> is derived, not stored</h2>
+<p>The literals in <code>regions.ts</code> carry no offset. At import time each region is resolved
+through <a href="#zonefromregion"><code>zoneFromRegion</code></a> and stamped with that zone&#39;s <strong>current</strong>
+offset, so the bands on the map follow daylight saving without any data to maintain.</p>
+<p>Two consequences worth knowing:</p>
+<ul>
+<li>A region whose timezone the runtime can&#39;t resolve — even through
+<a href="/timezones/"><code>timezoneAliases</code></a> — is <strong>dropped from <code>regions</code></strong> with a warning. The
+array length is therefore a function of the runtime&#39;s <code>Intl</code> data, not just this file.</li>
+<li>Regions are grouped into offset <em>bands</em> for highlighting and keyboard navigation, so a
+region&#39;s offset changing at a DST boundary changes which band it lights up with.</li>
+</ul>
+<h2>Exports</h2>
+<ul>
+<li><strong><code>regions: Region[]</code></strong> — every polygon, in source order.</li>
+<li><strong><code>regionId(region)</code></strong> — the label shown in the picker&#39;s tooltip, e.g.
+<code>&#39;Australia/Sydney GMT+11&#39;</code>.</li>
+<li><strong><code>zoneFromRegion(region)</code></strong> — the region&#39;s <a href="/timezones/"><code>Timezone</code></a>, following one or
+two alias hops.</li>
+</ul>
+<p>The coordinates come from
+<a href="https://github.com/kevalbhatt/timezone-picker">Keval Bhatt&#39;s timezone-picker</a>; <code>polygons.ts</code>
+holds the simplification helpers used to clean them up.</p>
+
+  </article>
+  <nav class="doc-nav" aria-label="Documentation">
+  <ul>
+    <li><details><summary><a class="doc-link" href="/components/">components</a></summary>
+    <ul>
+      <li><a class="doc-link" href="/timezone-picker/">&lt;tosijs-timezone-picker&gt;</a></li>
+    </ul>
+    </details></li>
+    <li><details open><summary><a class="doc-link" href="/reference/">reference</a></summary>
+    <ul>
+      <li><a class="doc-link" href="/index/">exports</a></li>
+      <li><a class="doc-link current" href="/regions/" aria-current="page">regions</a></li>
+      <li><a class="doc-link" href="/timezones/">timezones</a></li>
+    </ul>
+    </details></li>
+    <li><a class="doc-link" href="/">tosijs-timezone-picker</a></li>
+  </ul>
+  </nav>
+  <ul class="doc-navbar">
+    <li><a href="https://tosijs.net" data-icon="tosi">tosijs</a></li>
+    <li><a href="https://ui.tosijs.net" data-icon="tosi">tosijs-ui</a></li>
+    <li><a href="https://github.com/tonioloewald/tosijs-timezone-picker" data-icon="github">github</a></li>
+    <li><a href="https://www.npmjs.com/package/tosijs-timezone-picker" data-icon="npm">npmjs</a></li>
+  </ul>
+  </tosi-doc-system>
+  <script type="module" src="/hydrate.js"></script>
+</body>
+</html>

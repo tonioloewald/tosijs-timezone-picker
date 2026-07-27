@@ -1,3 +1,48 @@
+/*{ "parent": "reference", "description": "The map's polygon data: what a Region is, how its offset is derived, and why regions can disappear." }*/
+/*#
+# regions
+
+The geometry behind the map: ~450 polygons, each tagged with the IANA timezone it belongs
+to. This is the only static data in the package — about 30kB of coordinates — and the
+reason the component needs no timezone dataset.
+
+```typescript
+interface Region {
+  timezone: string // IANA name — may be a deprecated one, see timezoneAliases
+  country: string  // ISO 3166-1 alpha-2
+  abbr: string     // the abbreviation the source data recorded
+  points: string   // SVG polygon points, in a 500 x 250 viewBox
+  offset: number   // hours from GMT — NOT in the source data; see below
+}
+```
+
+## `offset` is derived, not stored
+
+The literals in `regions.ts` carry no offset. At import time each region is resolved
+through [`zoneFromRegion`](#zonefromregion) and stamped with that zone's **current**
+offset, so the bands on the map follow daylight saving without any data to maintain.
+
+Two consequences worth knowing:
+
+- A region whose timezone the runtime can't resolve — even through
+  [`timezoneAliases`](/timezones/) — is **dropped from `regions`** with a warning. The
+  array length is therefore a function of the runtime's `Intl` data, not just this file.
+- Regions are grouped into offset *bands* for highlighting and keyboard navigation, so a
+  region's offset changing at a DST boundary changes which band it lights up with.
+
+## Exports
+
+- **`regions: Region[]`** — every polygon, in source order.
+- **`regionId(region)`** — the label shown in the picker's tooltip, e.g.
+  `'Australia/Sydney GMT+11'`.
+- **`zoneFromRegion(region)`** — the region's [`Timezone`](/timezones/), following one or
+  two alias hops.
+
+The coordinates come from
+[Keval Bhatt's timezone-picker](https://github.com/kevalbhatt/timezone-picker); `polygons.ts`
+holds the simplification helpers used to clean them up.
+*/
+
 import {timezones, Timezone, timezoneAliases} from './timezones'
 export interface Region {
   timezone: string

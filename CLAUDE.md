@@ -1,38 +1,116 @@
 # CLAUDE.md
 
+> **Shared engineering practices** live at
+> **https://github.com/tonioloewald/tosijs-coding-practices** — and, when checked out beside
+> this repo, at [`../tosijs-coding-practices`](../tosijs-coding-practices/README.md). Read that
+> index first for the cross-project defaults (development, testing, code quality, performance,
+> review, releasing, deployment, and the **observant** tosijs stack). This file records only
+> what is **specific to or divergent from** those defaults — when they conflict, this file wins.
+>
+> Those docs are **living, not graven in stone.** Don't rewrite them unprompted, but do speak up:
+> voice concerns, flag inconsistencies, and suggest improvements as you work.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## Project
 
-A lightweight, self-contained `<tosijs-timezone-picker>` web component built with [tosijs](https://tosijs.net) (formerly xinjs). Published on npm as `tosijs-timezone-picker`. Renders an interactive SVG world map where users can click regions or autocomplete by timezone name/GMT offset. Uses the `Intl` API at runtime to derive timezone data rather than static datasets.
+`tosijs-timezone-picker` is a single web-component: an interactive SVG world map plus
+offset-aware autocomplete, published on npm and documented at
+[timezones.tosijs.net](https://timezones.tosijs.net). It is a **leaf** — nothing else in the
+ecosystem consumes it — but it *is* a published library, so the consumer-protecting practices
+(semver, changelog, backward compatibility) still apply.
+
+The component ships in two shapes from one implementation:
+
+- **`src/blueprint.ts`** — the whole component as a pure tosijs
+  [`XinBlueprint`](https://tosijs.net/blueprint-loader/): a function that receives tosijs and
+  returns a class. It imports **no tosijs code** (only types), so `dist/blueprint.js` is
+  self-contained and loadable from a CDN by `<tosi-blueprint>` under any tag the consumer picks.
+- **`src/timezone-picker.ts`** — hydrates that blueprint once, synchronously, against the
+  statically-imported tosijs and registers `<tosijs-timezone-picker>`. It deliberately does
+  **not** use `makeComponent()`: that is async, and awaiting it would turn `TimezonePicker` /
+  `timezonePicker` into promises — a breaking change for every consumer.
+
+Adding a feature means editing the blueprint. Only registration lives in `timezone-picker.ts`.
 
 ## Commands
 
-- **Dev server:** `bun start` (runs `bun --watch dev.ts`, serves demo at localhost:8777)
-- **Build:** `bun run build` (runs `build.ts` — tests first, then builds dist/cdn/docs targets via Bun.build, generates .d.ts via tsc)
-- **Test:** `bun test` (runs all `*.test.ts` files with Bun's test runner)
-- **Run single test:** `bun test src/polygons.test.ts`
+```bash
+bun install
+bun start                    # build, then the doc-site dev server (bin/site.ts) on :8790
+bun run build                # build doc site + library, then exit
+bun test                     # all tests
+bun test src/polygons.test.ts   # one file
+bun tsc --noEmit             # typecheck — the build does NOT fail on type errors
+bun run tls                  # one-time: dev-server TLS certs (needs mkcert + sudo)
+```
 
-## Architecture
+`bin/site.ts` is the **only** build entry (tosijs-ui/site `buildSite`/`devServer` + a
+`buildLibrary()` that shells out to the `bun build` CLI). Don't add side-channel build
+scripts. `tsc` runs with `.nothrow()` to emit declarations, so type errors degrade the `.d.ts`
+silently — run `bun tsc --noEmit` before calling a change done.
 
-- **src/index.ts** — Public exports: `timezonePicker`, `TimezonePicker`, `timezones`, `localTimezone`, `regions`
-- **src/timezone-picker.ts** — The `<tosijs-timezone-picker>` custom element (extends tosijs `Component`). Renders an SVG map from region polygon data, handles click/hover/autocomplete interactions. The `value` and `timezone` properties always hold a valid IANA timezone name. Uses `static shadowStyleSpec`, `static initAttributes`, `static preferredTagName`, and `this.parts` (tosijs modern API).
-- **src/timezones.ts** — Builds the timezone list dynamically from `Intl.supportedValuesOf('timeZone')` and `Intl.DateTimeFormat`. Exports `timezones`, `localTimezone`, and lookup helpers (`zoneFromName`, `zoneFromId`, `zoneId`).
-- **src/regions.ts** — Static polygon data mapping ~400 geographic regions to IANA timezone names. Each `Region` has SVG `points`, a `timezone` name, `country` code, and `offset`.
-- **src/polygons.ts** — Geometry utilities for polygon simplification (used for cleaning up region data).
-- **dev.ts** — Bun dev server with file watcher; builds src bundle to `www/` and serves `demo/index.html`
-- **build.ts** — Production build script: runs tests, builds dist/cdn/docs via Bun.build, generates .d.ts via tsc
+## Things that are easy to get wrong
 
-## Build Outputs
+- **Region offsets are derived, not stored.** The literals in `src/regions.ts` carry only
+  `timezone`, `country`, `points`, `abbr`. A trailing `.map()` resolves each through
+  `zoneFromRegion` and stamps the *current* offset from `Intl`, dropping (with a
+  `console.warn`) any region whose zone can't be resolved. Offsets therefore move with DST,
+  and `regions.length` depends on the runtime's `Intl` data.
+- **`regions.test.ts` asserts an exact count (448).** Editing region data means updating that
+  assertion.
+- **A `NaN` offset is silent poison.** Nothing compares equal to `NaN`, so a region with one is
+  orphaned from every offset band: no highlight, and keyboard navigation into that band would
+  throw. `zoneOffset()` handles `:45` zones for this reason (Nepal +5:45, Chatham +12:45), and
+  both a test and a `Number.isFinite` filter guard it.
+- **`value` and `timezone` are one selection behind two properties.** `value` is tosijs's
+  change-firing property; `timezone` is the attribute. `validate()` reconciles them in
+  `render()` using the private `synced` field to tell which one moved; `connectedCallback()`
+  does the initial reconcile *before* `super.connectedCallback()` so it can't fire a spurious
+  `change`.
+- **`super.connectedCallback()` renders before the map exists**, so that pass paints nothing —
+  hence the explicit `this.render()` at the end of `connectedCallback`. Remove it and the
+  initial selection is invisible until something else triggers a render.
+- **Templates are cloned per instance.** The SVG map and the `<datalist>` options are built
+  once and `cloneNode`d. Sharing an actual node between instances (as an earlier version did
+  with the datalist) silently steals it from every picker but the last one on the page.
+- **`timezoneAliases`** maps deprecated ⇄ current IANA names, because runtimes disagree about
+  which name they list and the region data uses both. Entries must agree on *offset* — there is
+  a test for it (that test caught `America/Coral_Harbour` pointing at Edmonton).
+- **`list` is a readonly property on `HTMLInputElement`**, so the datalist link has to be set
+  with `setAttribute`, not through the element spec.
 
-- **dist/** — ES module library build + type declarations (npm main entry, tosijs externalized)
-- **cdn/** — Minified ES module library build (tosijs externalized)
-- **docs/** — Demo page + bundled JS for GitHub Pages
+## Doc site
 
-## Key Details
+- Pages come from `/*# … */` doc comments in `src/` plus `README.md` (the home page); config in
+  `tosijs-timezone-picker-site.config.ts`; hydration bundle in `demo/site.ts`.
+- **Live examples hydrate asynchronously.** Screenshotting or querying the DOM immediately
+  after page load shows empty examples — that is a race in your harness, not a broken page.
+  Wait a beat before concluding anything.
+- Only ` ```html `, ` ```css `, ` ```js `, ` ```test ` fences run; consecutive tagged fences
+  group into one example. Use ` ```typescript ` or an indented block for illustrative code —
+  in particular, the `<tosi-blueprint src="https://cdn.jsdelivr.net/…">` snippet must stay
+  non-live so the docs don't fetch from a CDN.
+- `src/docs/*.md` (the section pages) are generated on first build and then hand-editable;
+  their `<!-- toc -->` blocks are regenerated every build.
 
-- Runtime: **Bun** (for building, testing, dev server, and package management)
-- Type declarations: **tsc** via `tsconfig.build.json` (declaration-only emit)
-- Peer dependency on **tosijs** (not bundled)
-- TypeScript source, ES module output
-- Tests use `bun:test` (`test`, `expect` imports)
+## Build outputs
+
+| path | what | committed |
+| --- | --- | --- |
+| `dist/index.js` + `.d.ts` | ESM, tosijs external — the npm entry | yes |
+| `dist/blueprint.js` | self-contained ESM blueprint (`tosijs-timezone-picker/blueprint`) | yes |
+| `cdn/index.js` | minified ESM — the long-standing CDN path, kept for compatibility | yes |
+| `docs/` | the doc site, served from `main` `/docs` at timezones.tosijs.net | yes |
+| `dist/iife.js`, `dist/hydrate/` | doc-site bundle scratch — gitignored | no |
+
+`package.json`'s `files` list is explicit for that reason: `/dist` wholesale would publish a
+1.1MB doc-site bundle.
+
+## Key details
+
+- Runtime is **Bun**; `tosijs` is a peer dependency (mirrored in devDependencies), `tosijs-ui`
+  is a build-time devDep for the doc system only — it is never in the shipped bundle.
+- Tests run under **happy-dom** (`bunfig.toml` preloads `happydom.ts`) so the component can be
+  mounted for real; tosijs renders on `requestAnimationFrame`, so component tests await frames
+  rather than `updates()`.

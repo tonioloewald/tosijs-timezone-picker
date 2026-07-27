@@ -1,25 +1,34 @@
 // src/timezone-picker.ts
-import { Component, elements } from "tosijs";
+import { Component, elements, varDefault } from "tosijs";
 
 // src/timezones.ts
 var timeNow = new Date;
-var timezones = Intl.supportedValuesOf("timeZone").map((name) => {
-  const offset = Number(Intl.DateTimeFormat("en-GB", {
+var zoneOffset = (name) => {
+  const formatted = Intl.DateTimeFormat("en-GB", {
     hour: "numeric",
     minute: "numeric",
     timeZoneName: "shortOffset",
     timeZone: name
-  }).format(timeNow).split("GMT").pop().replace(/\:30/, ".5"));
-  const abbr = Intl.DateTimeFormat("en-GB", {
-    hour: "numeric",
-    minute: "numeric",
-    timeZoneName: "short",
-    timeZone: name
-  }).format(timeNow).split(" ").pop();
+  }).format(timeNow);
+  const parsed = formatted.match(/GMT([+-])(\d+)(?::(\d+))?/);
+  if (parsed === null) {
+    return 0;
+  }
+  const [, sign, hours, minutes] = parsed;
+  const offset = Number(hours) + Number(minutes ?? 0) / 60;
+  return sign === "-" ? -offset : offset;
+};
+var zoneAbbr = (name) => Intl.DateTimeFormat("en-GB", {
+  hour: "numeric",
+  minute: "numeric",
+  timeZoneName: "short",
+  timeZone: name
+}).format(timeNow).split(" ").pop();
+var timezones = Intl.supportedValuesOf("timeZone").map((name) => {
   const tz = {
     name,
-    abbr,
-    offset
+    abbr: zoneAbbr(name),
+    offset: zoneOffset(name)
   };
   const parts = name.split("/");
   if (parts.length === 3) {
@@ -27,11 +36,10 @@ var timezones = Intl.supportedValuesOf("timeZone").map((name) => {
   }
   return tz;
 });
-var localTimezone = timezones.find((z) => z.name === Intl.DateTimeFormat().resolvedOptions().timeZone);
 var timezoneAliases = {
   "Africa/Asmera": "Africa/Asmara",
   "Africa/Asmara": "Africa/Asmera",
-  "America/Coral_Harbour": "America/Edmonton",
+  "America/Coral_Harbour": "America/Panama",
   "America/Godthab": "America/Nuuk",
   "America/Nuuk": "America/Godthab",
   "Asia/Calcutta": "Asia/Kolkata",
@@ -57,18 +65,15 @@ var timezoneAliases = {
   "Australia/Currie": "Australia/Hobart",
   "Pacific/Johnston": "Pacific/Honolulu"
 };
-var zoneFromName = (name) => {
-  return timezones.find((tz) => tz.name === name || tz.shortName === name) ?? timezones.find((tz) => tz.name === timezoneAliases[name]);
-};
+var zoneFromName = (name) => timezones.find((tz) => tz.name === name || tz.shortName === name) ?? timezones.find((tz) => tz.name === timezoneAliases[name]);
 var zoneId = (tz) => {
   const name = tz.shortName !== undefined ? tz.shortName : tz.name;
   const { offset } = tz;
   const signedOffset = offset > 0 ? `+${offset}` : offset < 0 ? String(offset) : "";
   return `${name.replace(/_/g, " ")} GMT${signedOffset}`;
 };
-var zoneFromId = (id) => {
-  return timezones.find((tz) => id === zoneId(tz));
-};
+var zoneFromId = (id) => timezones.find((tz) => id === zoneId(tz));
+var localTimezone = zoneFromName(Intl.DateTimeFormat().resolvedOptions().timeZone) ?? zoneFromName("UTC") ?? timezones[0];
 
 // src/regions.ts
 var regionId = (region) => {
@@ -2782,325 +2787,358 @@ var regions = [
   } : undefined;
 }).filter((region) => region !== undefined);
 
-// src/timezone-picker.ts
-var { fragment, div, span, option, input, datalist } = elements;
+// src/blueprint.ts
 var SVG_XMLNS = "http://www.w3.org/2000/svg";
 var DATALIST_ID = "-timezone-list-";
-var regionKey = Symbol("region");
-var offsets = [...new Set(regions.map((r) => r.offset))].sort((a, b) => a - b);
+var TOOLTIP_ID = "-timezone-tooltip-";
+var MAP_WIDTH = 500;
+var MAP_HEIGHT = 250;
 var regionCenterY = (region) => {
   const ys = region.points.split(",").filter((_, i) => i % 2 === 1).map(Number);
   return ys.reduce((a, b) => a + b, 0) / ys.length;
 };
+var offsets = [...new Set(regions.map((r) => r.offset))].filter((offset) => Number.isFinite(offset)).sort((a, b) => a - b);
 var regionsByOffset = new Map;
 for (const offset of offsets) {
-  const offsetRegions = regions.filter((r) => r.offset === offset);
   const seen = new Set;
   const unique = [];
-  for (const r of offsetRegions) {
-    if (!seen.has(r.timezone)) {
+  for (const r of regions) {
+    if (r.offset === offset && !seen.has(r.timezone)) {
       seen.add(r.timezone);
       unique.push(r);
     }
   }
   regionsByOffset.set(offset, unique.sort((a, b) => regionCenterY(a) - regionCenterY(b)));
 }
-var timezoneMap = () => {
-  const svg = document.createElementNS(SVG_XMLNS, "svg");
-  svg.setAttribute("viewBox", "0 0 500 250");
-  svg.setAttribute("alt", "world timezone map");
-  svg.append(...regions.map((region) => {
-    const polygon = document.createElementNS(SVG_XMLNS, "polygon");
-    polygon.setAttribute("points", region.points);
-    polygon[regionKey] = region;
-    return polygon;
-  }));
-  return svg;
-};
-var timezoneDatalist = datalist({ id: DATALIST_ID }, ...timezones.map((tz) => option({ value: zoneId(tz) })));
+var nearestByLatitude = (candidates, y) => candidates.reduce((best, r) => Math.abs(regionCenterY(r) - y) < Math.abs(regionCenterY(best) - y) ? r : best);
+var makeTimezonePickerClass = (module) => {
+  const { Component, elements, varDefault } = module;
+  const { fragment, div, span, option, input, datalist } = elements;
+  const regionOfPolygon = new WeakMap;
+  let mapTemplate;
+  let optionsTemplate;
+  const timezoneMap = () => {
+    if (mapTemplate === undefined) {
+      mapTemplate = document.createElementNS(SVG_XMLNS, "svg");
+      mapTemplate.setAttribute("viewBox", `0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`);
+      mapTemplate.setAttribute("focusable", "false");
+      mapTemplate.append(...regions.map((region) => {
+        const polygon = document.createElementNS(SVG_XMLNS, "polygon");
+        polygon.setAttribute("points", region.points);
+        return polygon;
+      }));
+    }
+    const svg = mapTemplate.cloneNode(true);
+    const polygons = svg.querySelectorAll("polygon");
+    for (let i = 0;i < polygons.length; i++) {
+      regionOfPolygon.set(polygons[i], regions[i]);
+    }
+    return svg;
+  };
+  const timezoneOptions = () => {
+    if (optionsTemplate === undefined) {
+      optionsTemplate = document.createDocumentFragment();
+      optionsTemplate.append(...timezones.map((tz) => option({ value: zoneId(tz) })));
+    }
+    return optionsTemplate.cloneNode(true);
+  };
 
-class TimezonePicker extends Component {
-  value = localTimezone.name;
-  _navRegion;
-  static preferredTagName = "tosijs-timezone-picker";
-  static initAttributes = {
-    timezone: localTimezone.name
-  };
-  static shadowStyleSpec = {
-    ":host": {
-      display: "flex",
-      flexDirection: "column",
-      position: "relative",
-      width: `calc(500px * var(--scale, 1))`,
-      height: `calc(250px * var(--scale, 1))`,
-      overflow: "hidden"
-    },
-    ".map": {
-      background: "var(--map-ocean, #79b)",
-      flex: "1 1 auto",
-      overflow: "hidden",
-      outline: "none"
-    },
-    ".map:focus": {
-      boxShadow: "inset 0 0 0 3px var(--focus-color, #fffc)"
-    },
-    ".map, svg": {
-      width: "100%",
-      height: "100%"
-    },
-    polygon: {
-      transition: "var(--transition, ease-out 0.3s)",
-      fill: "var(--map-land, #555)",
-      stroke: "var(--map-land, #555)",
-      strokeWidth: 0.5
-    },
-    "polygon.hover": {
-      fill: "var(--hover-color, #888)",
-      stroke: "var(--hover-color, #888)"
-    },
-    "polygon.hover-target": {
-      fill: "var(--hover-target-color, #444)",
-      stroke: "var(--hover-target-color, #444)"
-    },
-    "polygon.active": {
-      fill: `var(--active-zone-color, #777)`,
-      stroke: `var(--active-zone-color, #777)`
-    },
-    "polygon.active-target": {
-      fill: `var(--active-color, #333)`,
-      stroke: `var(--active-color, #333)`
-    },
-    "polygon.offset": {
-      filter: `var(--offset-filter, brightness(0.75))`
-    },
-    ".tooltip": {
-      position: "absolute",
-      pointerEvents: "none",
-      background: "var(--tooltip-bg, #000c)",
-      color: "var(--tooltip-color, white)",
-      fontFamily: "var(--font-family, Sans-serif)",
-      fontSize: "var(--tooltip-font-size, 11px)",
-      padding: "1px 8px",
-      borderRadius: "3px",
-      whiteSpace: "nowrap",
-      display: "none",
-      zIndex: "1"
-    },
-    ".tooltip.visible": {
-      display: "block"
-    },
-    ".sr-only": {
-      position: "absolute",
-      width: "1px",
-      height: "1px",
-      padding: "0",
-      margin: "-1px",
-      overflow: "hidden",
-      clip: "rect(0,0,0,0)",
-      whiteSpace: "nowrap",
-      border: "0"
-    },
-    ".zone-name": {
-      fontFamily: "var(--font-family, Sans-serif)",
-      position: "absolute",
-      bottom: `var(--inset, 10px)`,
-      left: `var(--inset, 10px)`,
-      right: `var(--inset, 10px)`,
-      color: "var(--font-color, white)",
-      fontSize: "var(--font-size, 16px)",
-      padding: `calc(var(--padding, 10px))`,
-      background: "var(--input-bg, #fff4)",
-      borderRadius: "var(--input-radius, 5px)",
-      textAlign: "center",
-      border: "none",
-      outline: "none",
-      width: "calc(100% - var(--inset, 10px) * 4)"
+  class TimezonePicker extends Component {
+    value = localTimezone.name;
+    static initAttributes = {
+      timezone: localTimezone.name
+    };
+    static shadowStyleSpec = {
+      ":host": {
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+        width: `calc(${MAP_WIDTH}px * ${varDefault.scale(1)})`,
+        height: `calc(${MAP_HEIGHT}px * ${varDefault.scale(1)})`,
+        overflow: "hidden"
+      },
+      ".map": {
+        background: varDefault.mapOcean("#79b"),
+        flex: "1 1 auto",
+        overflow: "hidden",
+        outline: "none"
+      },
+      ".map:focus-visible": {
+        boxShadow: `inset 0 0 0 3px ${varDefault.focusColor("#fffc")}`
+      },
+      ".map, svg": {
+        width: "100%",
+        height: "100%"
+      },
+      polygon: {
+        transition: varDefault.transition("ease-out 0.3s"),
+        fill: varDefault.mapLand("#555"),
+        stroke: varDefault.mapLand("#555"),
+        strokeWidth: 0.5
+      },
+      "polygon.hover": {
+        fill: varDefault.hoverColor("#888"),
+        stroke: varDefault.hoverColor("#888")
+      },
+      "polygon.hover-target": {
+        fill: varDefault.hoverTargetColor("#444"),
+        stroke: varDefault.hoverTargetColor("#444")
+      },
+      "polygon.active": {
+        fill: varDefault.activeZoneColor("#777"),
+        stroke: varDefault.activeZoneColor("#777")
+      },
+      "polygon.active-target": {
+        fill: varDefault.activeColor("#333"),
+        stroke: varDefault.activeColor("#333")
+      },
+      ".tooltip": {
+        position: "absolute",
+        pointerEvents: "none",
+        background: varDefault.tooltipBg("#000c"),
+        color: varDefault.tooltipColor("white"),
+        fontFamily: varDefault.fontFamily("sans-serif"),
+        fontSize: varDefault.tooltipFontSize("11px"),
+        padding: "1px 8px",
+        borderRadius: "3px",
+        whiteSpace: "nowrap",
+        display: "none",
+        zIndex: "1"
+      },
+      ".tooltip.visible": {
+        display: "block"
+      },
+      ".sr-only": {
+        position: "absolute",
+        width: "1px",
+        height: "1px",
+        padding: "0",
+        margin: "-1px",
+        overflow: "hidden",
+        clip: "rect(0,0,0,0)",
+        whiteSpace: "nowrap",
+        border: "0"
+      },
+      ".zone-name": {
+        fontFamily: varDefault.fontFamily("sans-serif"),
+        position: "absolute",
+        bottom: varDefault.inset("10px"),
+        left: varDefault.inset("10px"),
+        right: varDefault.inset("10px"),
+        color: varDefault.fontColor("white"),
+        fontSize: varDefault.fontSize("16px"),
+        padding: varDefault.padding("10px"),
+        background: varDefault.inputBg("#fff4"),
+        borderRadius: varDefault.inputRadius("5px"),
+        textAlign: "center",
+        border: "none",
+        outline: "none",
+        width: `calc(100% - ${varDefault.inset("10px")} * 4)`
+      }
+    };
+    navRegion;
+    synced = localTimezone.name;
+    polygons = [];
+    get zone() {
+      return zoneFromName(this.timezone);
     }
-  };
-  get zone() {
-    return zoneFromName(this.timezone);
-  }
-  get region() {
-    return regions.find((rg) => rg.timezone === this.timezone) ?? regions.find((rg) => timezoneAliases[rg.timezone] === this.timezone);
-  }
-  get zoneId() {
-    return zoneId(this.zone);
-  }
-  content = fragment(div({
-    class: "map",
-    part: "map",
-    tabindex: "0",
-    role: "application",
-    ariaLabel: "timezone map",
-    ariaRoledescription: "timezone picker",
-    ariaDescribedby: "-tz-tooltip-"
-  }), span({
-    class: "tooltip",
-    part: "tooltip",
-    id: "-tz-tooltip-",
-    role: "tooltip"
-  }), span({
-    class: "sr-only",
-    part: "liveRegion",
-    ariaLive: "polite",
-    ariaAtomic: "true"
-  }), input({
-    ariaLabel: "timezone name, including GMT offset",
-    placeholder: "region/city GMT+x",
-    class: "zone-name",
-    part: "zoneName"
-  }), timezoneDatalist);
-  showTooltip(region, polygon) {
-    const { tooltip } = this.parts;
-    const polyRect = polygon.getBoundingClientRect();
-    const hostRect = this.getBoundingClientRect();
-    tooltip.textContent = regionId(region);
-    tooltip.classList.add("visible");
-    const tipRect = tooltip.getBoundingClientRect();
-    let x = (polyRect.left + polyRect.right) / 2 - hostRect.left - tipRect.width / 2;
-    let y = polyRect.bottom - hostRect.top + 4;
-    x = Math.max(0, Math.min(x, hostRect.width - tipRect.width));
-    y = Math.max(0, Math.min(y, hostRect.height - tipRect.height));
-    tooltip.style.left = `${x}px`;
-    tooltip.style.top = `${y}px`;
-    tooltip.style.transform = "";
-  }
-  hideTooltip() {
-    this.parts.tooltip.classList.remove("visible");
-  }
-  polygonForRegion(region) {
-    const { map } = this.parts;
-    return [...map.querySelectorAll("polygon")].find((p) => p[regionKey] === region);
-  }
-  hoverRegion = (event) => {
-    const region = event.target[regionKey];
-    this.updateRegions(region, "hover");
-    const { map } = this.parts;
-    [...map.querySelectorAll("polygon")].forEach((polygon) => {
-      polygon.classList.toggle("hover-target", polygon[regionKey] === region);
-    });
-    if (region) {
-      this.showTooltip(region, event.target);
-    } else {
+    get region() {
+      return regions.find((rg) => rg.timezone === this.timezone) ?? regions.find((rg) => timezoneAliases[rg.timezone] === this.timezone);
+    }
+    get zoneId() {
+      return zoneId(this.zone);
+    }
+    hoverRegion = (event) => {
+      const region = regionOfPolygon.get(event.target);
+      this.paintRegions(region, "hover");
+      if (region !== undefined) {
+        this.showTooltip(region, event.target);
+      } else {
+        this.hideTooltip();
+      }
+    };
+    leaveMap = () => {
+      this.paintRegions(undefined, "hover");
       this.hideTooltip();
+    };
+    pickRegion = (event) => {
+      const region = regionOfPolygon.get(event.target);
+      if (region !== undefined) {
+        this.selectRegion(region, false);
+      }
+    };
+    pickZone = (event) => {
+      const { zoneName } = this.parts;
+      const zone = zoneFromId(event.target.value);
+      if (zone !== undefined) {
+        this.navRegion = undefined;
+        this.value = this.timezone = zone.name;
+      } else {
+        zoneName.value = this.zoneId;
+      }
+    };
+    focusInput = (event) => {
+      event.target.select();
+    };
+    handleKeydown = (event) => {
+      const { key } = event;
+      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key))
+        return;
+      event.preventDefault();
+      const currentRegion = this.navRegion ?? this.region;
+      const currentOffset = currentRegion?.offset ?? this.zone?.offset ?? 0;
+      const currentY = currentRegion ? regionCenterY(currentRegion) : MAP_HEIGHT / 2;
+      if (key === "ArrowLeft" || key === "ArrowRight") {
+        const step = key === "ArrowLeft" ? -1 : 1;
+        const index = offsets.indexOf(currentOffset);
+        const offset = offsets[(index + step + offsets.length) % offsets.length];
+        this.selectRegion(nearestByLatitude(regionsByOffset.get(offset), currentY));
+      } else {
+        const bandRegions = regionsByOffset.get(currentOffset);
+        if (bandRegions === undefined)
+          return;
+        const step = key === "ArrowUp" ? -1 : 1;
+        const index = currentRegion ? bandRegions.findIndex((r) => r.timezone === currentRegion.timezone) : -1;
+        const from = index === -1 ? 0 : index;
+        this.selectRegion(bandRegions[(from + step + bandRegions.length) % bandRegions.length]);
+      }
+    };
+    content = fragment(div({
+      class: "map",
+      part: "map",
+      tabindex: "0",
+      role: "application",
+      ariaLabel: "timezone map",
+      ariaRoledescription: "timezone picker",
+      ariaDescribedby: TOOLTIP_ID
+    }), span({
+      class: "tooltip",
+      part: "tooltip",
+      id: TOOLTIP_ID,
+      role: "tooltip"
+    }), span({
+      class: "sr-only",
+      part: "liveRegion",
+      ariaLive: "polite",
+      ariaAtomic: "true"
+    }), input({
+      ariaLabel: "timezone name, including GMT offset",
+      placeholder: "region/city GMT+x",
+      class: "zone-name",
+      part: "zoneName"
+    }), datalist({ id: DATALIST_ID }, timezoneOptions()));
+    showTooltip(region, polygon) {
+      const { tooltip } = this.parts;
+      const polyRect = polygon.getBoundingClientRect();
+      const hostRect = this.getBoundingClientRect();
+      tooltip.textContent = regionId(region);
+      tooltip.classList.add("visible");
+      const tipRect = tooltip.getBoundingClientRect();
+      const x = (polyRect.left + polyRect.right) / 2 - hostRect.left - tipRect.width / 2;
+      const y = polyRect.bottom - hostRect.top + 4;
+      tooltip.style.left = `${Math.max(0, Math.min(x, hostRect.width - tipRect.width))}px`;
+      tooltip.style.top = `${Math.max(0, Math.min(y, hostRect.height - tipRect.height))}px`;
     }
-  };
-  pickRegion = (event) => {
-    const { zoneName } = this.parts;
-    const region = event.target[regionKey];
-    if (region === undefined) {
-      return;
+    hideTooltip() {
+      this.parts.tooltip.classList.remove("visible");
     }
-    const zone = zoneFromRegion(region);
-    if (zone !== undefined) {
-      this._navRegion = region;
-      zoneName.value = this.zoneId;
+    polygonForRegion(region) {
+      return this.polygons.find((p) => regionOfPolygon.get(p) === region);
+    }
+    paintRegions(region, className) {
+      const offset = region?.offset;
+      for (const polygon of this.polygons) {
+        const rg = regionOfPolygon.get(polygon);
+        polygon.classList.toggle(className, rg === region || rg?.offset === offset);
+        polygon.classList.toggle(`${className}-target`, rg === region);
+      }
+    }
+    announce(region) {
+      this.parts.liveRegion.textContent = regionId(region);
+    }
+    selectRegion(region, announce = true) {
+      const zone = zoneFromRegion(region);
+      if (zone === undefined)
+        return;
+      this.navRegion = region;
       this.value = this.timezone = zone.name;
-    }
-  };
-  pickZone = (event) => {
-    const { zoneName } = this.parts;
-    const id = event.target.value;
-    const zone = zoneFromId(id);
-    if (zone !== undefined) {
-      this._navRegion = undefined;
-      this.value = this.timezone = zone.name;
-    } else {
-      zoneName.value = this.zoneId;
-    }
-  };
-  focusInput = (event) => {
-    event.target.select();
-  };
-  handleKeydown = (event) => {
-    const { key } = event;
-    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key))
-      return;
-    event.preventDefault();
-    const currentRegion = this._navRegion ?? this.region;
-    const currentOffset = currentRegion?.offset ?? this.zone?.offset ?? 0;
-    const offsetIndex = offsets.indexOf(currentOffset);
-    if (key === "ArrowLeft" || key === "ArrowRight") {
-      const dir = key === "ArrowLeft" ? -1 : 1;
-      const newIndex = (offsetIndex + dir + offsets.length) % offsets.length;
-      const newOffset = offsets[newIndex];
-      const zoneRegions = regionsByOffset.get(newOffset);
-      const currentY = currentRegion ? regionCenterY(currentRegion) : 125;
-      const closest = zoneRegions.reduce((best, r) => Math.abs(regionCenterY(r) - currentY) < Math.abs(regionCenterY(best) - currentY) ? r : best);
-      this.selectRegion(closest);
-    } else {
-      const zoneRegions = regionsByOffset.get(currentOffset);
-      let currentIndex = currentRegion ? zoneRegions.findIndex((r) => r.timezone === currentRegion.timezone) : -1;
-      if (currentIndex === -1)
-        currentIndex = 0;
-      const dir = key === "ArrowUp" ? -1 : 1;
-      const newIndex = (currentIndex + dir + zoneRegions.length) % zoneRegions.length;
-      this.selectRegion(zoneRegions[newIndex]);
-    }
-  };
-  announce(region) {
-    const { liveRegion } = this.parts;
-    liveRegion.textContent = regionId(region);
-  }
-  selectRegion(region) {
-    const zone = zoneFromRegion(region);
-    if (zone !== undefined) {
-      this._navRegion = region;
-      this.value = this.timezone = zone.name;
-      this.announce(region);
+      if (announce) {
+        this.announce(region);
+      }
       const polygon = this.polygonForRegion(region);
-      if (polygon) {
+      if (polygon !== undefined) {
         this.showTooltip(region, polygon);
       }
     }
-  }
-  connectedCallback() {
-    super.connectedCallback();
-    const { map, zoneName } = this.parts;
-    zoneName.setAttribute("list", DATALIST_ID);
-    if (map.querySelector("svg") === null) {
-      map.append(timezoneMap());
-    }
-    map.addEventListener("mouseover", this.hoverRegion);
-    map.addEventListener("click", this.pickRegion);
-    map.addEventListener("keydown", this.handleKeydown);
-    zoneName.addEventListener("change", this.pickZone);
-    zoneName.addEventListener("focus", this.focusInput);
-  }
-  validate() {
-    if (this.value !== this.timezone) {
-      const newZone = zoneFromName(this.value);
-      if (newZone === undefined) {
-        this.value = this.timezone;
+    validate() {
+      const { value, timezone } = this;
+      if (value !== timezone) {
+        if (value !== this.synced && zoneFromName(value) !== undefined) {
+          this.timezone = value;
+        } else {
+          this.value = timezone;
+        }
       }
+      this.synced = this.timezone;
+    }
+    connectedCallback() {
+      const attributeZone = this.getAttribute("timezone");
+      if (attributeZone !== null && zoneFromName(attributeZone) !== undefined) {
+        this.value = attributeZone;
+      } else if (zoneFromName(this.value) !== undefined) {
+        this.timezone = this.value;
+      }
+      this.synced = this.timezone;
+      super.connectedCallback();
+      const { map, zoneName } = this.parts;
+      zoneName.setAttribute("list", DATALIST_ID);
+      if (map.querySelector("svg") === null) {
+        map.append(timezoneMap());
+        this.polygons = [...map.querySelectorAll("polygon")];
+      }
+      map.addEventListener("mouseover", this.hoverRegion);
+      map.addEventListener("mouseleave", this.leaveMap);
+      map.addEventListener("click", this.pickRegion);
+      map.addEventListener("keydown", this.handleKeydown);
+      zoneName.addEventListener("change", this.pickZone);
+      zoneName.addEventListener("focus", this.focusInput);
+      this.render();
+    }
+    render() {
+      super.render();
+      this.validate();
+      this.paintRegions(this.region, "active");
+      this.parts.zoneName.value = this.zoneId;
     }
   }
-  updateRegions(region, className) {
-    const { map } = this.parts;
-    [...map.querySelectorAll(`polygon`)].forEach((polygon) => {
-      const rg = polygon[regionKey];
-      polygon.classList.toggle(className, rg === region || rg.offset === region?.offset);
-    });
-  }
-  render() {
-    super.render();
-    this.validate();
-    this.updateRegions(this.region, "active");
-    const { map, zoneName } = this.parts;
-    const activeRegion = this.region;
-    [...map.querySelectorAll("polygon")].forEach((polygon) => {
-      polygon.classList.toggle("active-target", polygon[regionKey] === activeRegion);
-    });
-    zoneName.value = this.zoneId;
-  }
-}
+  return TimezonePicker;
+};
+var blueprint = (_tag, module) => ({
+  type: makeTimezonePickerClass(module)
+});
+var blueprint_default = blueprint;
+
+// src/timezone-picker.ts
+var TAG_NAME = "tosijs-timezone-picker";
+var factory = { Component, elements, varDefault };
+var TimezonePicker = makeTimezonePickerClass(factory);
+TimezonePicker.preferredTagName = TAG_NAME;
 var timezonePicker = TimezonePicker.elementCreator();
 export {
+  zoneId,
+  zoneFromRegion,
+  zoneFromName,
+  zoneFromId,
   timezones,
   timezonePicker,
+  timezoneAliases,
   regions,
+  regionId,
+  makeTimezonePickerClass,
   localTimezone,
-  TimezonePicker
+  blueprint_default as blueprint,
+  TimezonePicker,
+  TAG_NAME
 };
 
-//# debugId=98C30D8A82202AC364756E2164756E21
+//# debugId=3B49E427C50A3C0964756E2164756E21

@@ -1,140 +1,166 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <title>tosijs &lt;tosijs-timezone-picker&gt; demo</title>
-    <style>
-      @import url(https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100;200;300;400;500;600;700;800;900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap);
+<head>
+  <!-- NB: the body is NOT hidden until hydration. It used to be (body opacity 0 +
+       a 4s safety-net timeout), because an undefined custom element is
+       display:inline, so the pre-rendered page stacked as bare text and hydration
+       reflowed the whole thing. The cost was a blank screen for as long as the
+       bundle took — ~4.5s on a cheap phone, for content already in the HTML. The
+       tosi-doc-system:not(:defined) rules in the stylesheet now lay the static page
+       out as though the chrome were there, so hydration only ADDS the chrome and
+       nothing moves. Paint immediately; don't hide readable content. -->
+  <!-- Theme, applied BEFORE first paint. Now that we paint the static page rather
+       than hiding it, a dark-mode reader would otherwise get a flash of the light
+       theme until the bundle lands and sets body.darkmode. CSS alone can't do this:
+       an explicit theme choice lives in localStorage. Mirrors applyThemePrefs()
+       (doc-system.ts) — keep the two in step. Fails safe: any error leaves the
+       light default, exactly as before. -->
+  <script>
+    try {
+      var p = JSON.parse(localStorage.getItem('tosi-doc-system-prefs') || '{}')
+      var t = p.theme || 'system'
+      if (t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches))
+        document.documentElement.classList.add('darkmode')
+      if (p.highContrast) document.documentElement.classList.add('high-contrast')
+    } catch (e) {}
+  </script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="/doc-system.css" data-tosi-doc-system />
+  <title>tosijs-timezone-picker — a graphical timezone picker web-component</title>
+  <meta name="description" content="A lightweight, mobile-friendly timezone-picker web-component: an interactive SVG world map plus offset-aware autocomplete, with no timezone dataset to ship." />
+  <meta name="keywords" content="timezone, web-component, tosijs, picker, Intl" />
+  <link rel="canonical" href="https://timezones.tosijs.net/" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="tosijs-timezone-picker" />
+  <meta property="og:title" content="tosijs-timezone-picker — a graphical timezone picker web-component" />
+  <meta property="og:description" content="A lightweight, mobile-friendly timezone-picker web-component: an interactive SVG world map plus offset-aware autocomplete, with no timezone dataset to ship." />
+  <meta property="og:url" content="https://timezones.tosijs.net/" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"tosijs-timezone-picker","description":"A lightweight, mobile-friendly timezone-picker web-component: an interactive SVG world map plus offset-aware autocomplete, with no timezone dataset to ship.","url":"https://timezones.tosijs.net/","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"tosijs-timezone-picker","url":"https://timezones.tosijs.net"}}</script>
+  <link rel="icon" href="/favicon.svg" />
+</head>
+<body>
+  <tosi-doc-system docs="/docs.json" config="{&quot;projectName&quot;:&quot;tosijs-timezone-picker&quot;,&quot;projectLinks&quot;:{&quot;tosijs&quot;:&quot;https://tosijs.net&quot;,&quot;github&quot;:&quot;https://github.com/tonioloewald/tosijs-timezone-picker&quot;}}">
+  <article class="doc-content">
+<h1>tosijs-timezone-picker</h1>
+<!--{ "headTitle": "tosijs-timezone-picker — a graphical timezone picker web-component", "description": "A lightweight, mobile-friendly timezone-picker web-component: an interactive SVG world map plus offset-aware autocomplete, with no timezone dataset to ship.", "keywords": [ "timezone", "web-component", "tosijs", "picker", "Intl" ] }-->
 
-      :root {
-        --font-family: 'Roboto Slab', sans-serif;
-        --font-size: 16px;
-        --brand-color: #EE257B;
-        --brand-text-color: #ECF3DD;
-        --spacing: 10px;
-        --heading-scale: 2;
-        --line-height: calc(var(--font-size) * 1.6);
-      }
+<p><a href="https://timezones.tosijs.net/">demo</a> | <a href="https://github.com/tonioloewald/tosijs-timezone-picker#readme">github</a> | <a href="https://www.npmjs.com/package/tosijs-timezone-picker">npm</a> | <img src="https://deno.bundlejs.com/?q=tosijs-timezone-picker&badge=" alt="bundlejs"></p>
+<p>A <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components">web-component</a> that
+provides a graphical timezone picker, inspired by Apple&#39;s. Click the map, arrow-key around
+it, or type — the field autocompletes on the timezone name <strong>and</strong> the GMT offset, so <code>Los</code>
+and <code>-7</code> both get you to <code>America/Los_Angeles</code>.</p>
+<pre><code class="language-html">&lt;tosijs-timezone-picker&gt;&lt;/tosijs-timezone-picker&gt;
+</code></pre>
+<pre><code class="language-css">tosijs-timezone-picker {
+  --scale: 0.9;
+  --active-color: #ee257b;
+  --active-zone-color: #f273aa;
+  --map-land: #aaa;
+  --map-ocean: #ccd;
+  --font-color: black;
+}
+</code></pre>
+<p>It is made as compact and fast-loading as possible by keeping the geometry to a minimum,
+taking everything it can from <a href="/timezones/"><code>Intl</code></a> at runtime, and generating the SVG
+on-the-fly. There is no timezone dataset in the package, and no network request at all.</p>
+<h2>Install</h2>
+<pre><code class="language-bash">bun add tosijs-timezone-picker      # or npm / yarn / pnpm
+</code></pre>
+<p><code>tosijs</code> is a peer dependency, so your app ships exactly one copy of it.</p>
+<h2>Use it</h2>
+<h3>As an element</h3>
+<pre><code class="language-typescript">import &#39;tosijs-timezone-picker&#39;
+</code></pre>
+<pre><code>&lt;tosijs-timezone-picker timezone=&quot;Australia/Sydney&quot;&gt;&lt;/tosijs-timezone-picker&gt;
+</code></pre>
+<h3>Programmatically</h3>
+<pre><code class="language-typescript">import { timezonePicker } from &#39;tosijs-timezone-picker&#39;
 
-      @media screen and (max-width: 800px) {
-        :root {
-          --spacing: 8px;
-          --heading-scale: 1.3;
-        }
+document.body.append(timezonePicker({ timezone: &#39;Europe/Rome&#39; }))
+</code></pre>
+<p><code>timezonePicker</code> is a standard tosijs <code>ElementCreator</code> — a function that takes
+<code>ElementPart</code> parameters and returns the element. <code>TimezonePicker</code>, the class behind
+the tag, is exported too.</p>
+<h3>From a CDN, with your own tag name</h3>
+<p>The component is written as a <a href="https://tosijs.net/blueprint-loader/">tosijs blueprint</a>, so
+it can be loaded at runtime with no build step — and the <em>consumer</em> picks the tag name:</p>
+<pre><code>&lt;script type=&quot;module&quot; src=&quot;https://cdn.jsdelivr.net/npm/tosijs/dist/module.js&quot;&gt;&lt;/script&gt;
+&lt;tosi-loader&gt;
+  &lt;tosi-blueprint
+    tag=&quot;my-timezone-picker&quot;
+    src=&quot;https://cdn.jsdelivr.net/npm/tosijs-timezone-picker/dist/blueprint.js&quot;
+  &gt;&lt;/tosi-blueprint&gt;
+&lt;/tosi-loader&gt;
+&lt;my-timezone-picker&gt;&lt;/my-timezone-picker&gt;
+</code></pre>
+<h2>The value</h2>
+<p><code>value</code> and <code>timezone</code> are two names for one thing, and both always hold a <strong>valid IANA
+timezone name</strong>. Setting either updates the other and fires <code>change</code>; setting a name the
+runtime doesn&#39;t know is rejected rather than accepted into an impossible state.</p>
+<p>Full attribute, property, styling and keyboard reference:
+<a href="/timezone-picker/"><code>&lt;tosijs-timezone-picker&gt;</code></a>.</p>
+<h2>timezones, localTimezone, Timezone</h2>
+<p>Rather than shipping a static dataset, this package builds its zone list from
+<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl"><code>Intl</code></a>
+at import time. That keeps the component small <em>and</em> guarantees it agrees with the runtime
+it is running in — including the current DST state. See <a href="/timezones/">timezones</a>.</p>
+<pre><code class="language-typescript">interface Timezone {
+  name: string       // the IANA name
+  shortName?: string // e.g. &#39;America/Knox&#39; for &#39;America/Indiana/Knox&#39;
+  abbr: string       // the runtime&#39;s short name, e.g. &#39;PDT&#39;
+  offset: number     // hours from GMT — fractional zones are decimals (5.5, 5.75, -3.5)
+}
+</code></pre>
+<h2>Styling</h2>
+<p>Everything is a CSS custom property, so you can theme the picker from outside its shadow
+DOM without <code>::part</code> gymnastics — <code>--scale</code>, <code>--map-ocean</code>, <code>--map-land</code>, <code>--active-color</code>,
+<code>--tooltip-bg</code> and the rest are listed on the <a href="/timezone-picker/">component page</a>.</p>
+<h2>Annoyances</h2>
+<p>The text field uses the browser&#39;s built-in <code>&lt;datalist&gt;</code> autocomplete. Most people will
+never type a zone name, but for those who do, its behavior is entirely the browser&#39;s:
+Firefox and Safari are lovely, Chrome&#39;s menu jumps around as you type. Swapping in
+tosijs-ui&#39;s editable <code>&lt;tosi-select&gt;</code> would fix it and roughly double the component&#39;s size,
+so it stays as it is.</p>
+<h2>Acknowledgements</h2>
+<p>Built on region data from Keval Bhatt&#39;s excellent jQuery-based
+<a href="https://github.com/kevalbhatt/timezone-picker">timezone-picker</a>. These things are a huge
+pain to get right — an SVG map I had paid for got binned in favour of Keval&#39;s data. Bravo!</p>
+<p>To improve the geometry, <a href="https://data.iana.org/time-zones/tz-link.html">IANA&#39;s page</a> is
+the place to start: there are tools that build GeoJSON timezone layers, and a fairly simple
+transformation would give exactly correct polygons. The <code>polygons</code> module could then
+simplify them — the raw GeoJSON is over 100MB.</p>
+<h2>License</h2>
+<p>MIT. Copyright ©2023-2026 Tonio Loewald.</p>
 
-        tosijs-timezone-picker {
-          --scale: 1;
-        }
-      }
-
-      @media screen and (max-height: 800px) {
-        :root {
-          --spacing: 8px;
-          --heading-scale: 1.3;
-        }
-
-        tosijs-timezone-picker {
-          --scale: 1;
-        }
-      }
-
-      * {
-        font-family: var(--font-family);
-        font-size: var(--font-size);
-      }
-
-      body { 
-        margin: 0;
-        line-height: vaR(--line-height);
-      }
-
-      h1 {
-        background: var(--brand-color);
-        color: var(--brand-text-color);
-        font-size: calc(var(--font-size) * var(--heading-scale));
-        line-height: calc(var(--line-height) * var(--heading-scale));
-        font-weight: 400;
-        margin: 0;
-        padding: var(--spacing);
-        text-align: center;
-      }
-
-      .column {
-        align-items: stretch;
-        display: flex;
-        flex-direction: column;
-        max-width: 100vw;
-        max-height: 100vh;
-        overflow: hidden;
-      }
-
-      .column > * {
-        max-width: 100vw;
-      }
-
-      .bar {
-        display: flex;
-        gap: var(--spacing);
-        justify-content: center;
-        align-items: center;
-        padding: var(--spacing);
-        flex-wrap: wrap;
-      }
-
-      tosijs-timezone-picker {
-        align-self: center;
-        flex: 1 1;
-        --active-color: var(--brand-color);
-        --active-zone-color: #f273aa;
-        --font-color: black;
-        --hover-color: #888;
-        --map-land: #aaa;
-        --map-ocean: #ccd;
-        --scale: 1.5;
-      }
-
-      a {
-        transition: ease-out 0.2s;
-        background: var(--brand-text-color);
-        color: var(--brand-color);
-        display: inline-block;
-        text-decoration: none;
-        padding: var(--spacing) calc(var(--spacing) * 1.5);
-        border-radius: calc(var(--spacing) * 0.5);
-      }
-
-      a:hover {
-        box-shadow: 0 0 0 2px var(--brand-color);
-      }
-
-      a:active {
-        background: var(--brand-color);
-        color: var(--brand-text-color);
-      }
-    </style>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div class="column">
-      <h1>tosijs &lt;tosijs-timezone-picker&gt; demo</h1>
-      <div class="bar">
-        <a target="_blank" href="https://timezones.tosijs.net/">
-          demo
-        </a>
-        <a target="_blank" href="https://github.com/tonioloewald/tosijs-timezone-picker#readme">
-          github / docs
-        </a>
-        <a target="_blank" href="https://www.npmjs.com/package/tosijs-timezone-picker">
-          npm
-        </a>
-        <img alt="bundlejs" src="https://deno.bundlejs.com/?q=tosijs-timezone-picker&badge=">
-      </div>
-      <tosijs-timezone-picker></tosijs-timezone-picker>
-    </div>
-    <script type="importmap">{"imports":{"tosijs":"./tosijs.js"}}</script>
-    <script src="./index.js" async type="module"></script>
-  </body>
+  </article>
+  <nav class="doc-nav" aria-label="Documentation">
+  <ul>
+    <li><details><summary><a class="doc-link" href="/components/">components</a></summary>
+    <ul>
+      <li><a class="doc-link" href="/timezone-picker/">&lt;tosijs-timezone-picker&gt;</a></li>
+    </ul>
+    </details></li>
+    <li><details><summary><a class="doc-link" href="/reference/">reference</a></summary>
+    <ul>
+      <li><a class="doc-link" href="/index/">exports</a></li>
+      <li><a class="doc-link" href="/regions/">regions</a></li>
+      <li><a class="doc-link" href="/timezones/">timezones</a></li>
+    </ul>
+    </details></li>
+    <li><a class="doc-link current" href="/" aria-current="page">tosijs-timezone-picker</a></li>
+  </ul>
+  </nav>
+  <ul class="doc-navbar">
+    <li><a href="https://tosijs.net" data-icon="tosi">tosijs</a></li>
+    <li><a href="https://ui.tosijs.net" data-icon="tosi">tosijs-ui</a></li>
+    <li><a href="https://github.com/tonioloewald/tosijs-timezone-picker" data-icon="github">github</a></li>
+    <li><a href="https://www.npmjs.com/package/tosijs-timezone-picker" data-icon="npm">npmjs</a></li>
+  </ul>
+  </tosi-doc-system>
+  <script type="module" src="/hydrate.js"></script>
+</body>
 </html>

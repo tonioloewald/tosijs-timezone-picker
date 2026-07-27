@@ -1,385 +1,164 @@
-import { Component, elements } from 'tosijs'
+/*{ "parent": "components", "order": 1, "description": "The timezone-picker itself: an interactive SVG world map plus offset-aware autocomplete, shipped as a tosijs blueprint." }*/
+/*#
+# `<tosijs-timezone-picker>`
+
+A graphical timezone picker inspired by Apple's, in about 30kB of geometry and no
+timezone dataset at all — the zones come from [`Intl`](/timezones/) at runtime.
+
+Click a region, arrow-key around the map, or type into the field: the field autocompletes
+on **both** the zone name and the GMT offset, so `Los` and `-7` both get you to
+`America/Los_Angeles`. `value` and `timezone` always hold a valid IANA timezone name.
+
+```html
+<tosijs-timezone-picker timezone="Australia/Sydney"></tosijs-timezone-picker>
+```
+## Reading the value
+
+The element fires `change` when the user picks a zone — from the map, the keyboard, or the
+text field.
+
+```html
+<tosijs-timezone-picker id="picker"></tosijs-timezone-picker>
+<div class="readout">—</div>
+```
+```css
+.readout {
+  font-family: monospace;
+  padding: 10px 10px 40px;
+}
+```
+```js
+const picker = preview.querySelector('#picker')
+const readout = preview.querySelector('.readout')
+
+const show = () => {
+  const { name, abbr, offset } = picker.zone
+  readout.textContent = `${name} — ${abbr} (GMT${offset > 0 ? '+' : ''}${offset || ''})`
+}
+
+picker.addEventListener('change', show)
+show()
+```
+
+## Attributes & properties
+
+| | |
+| --- | --- |
+| `timezone` | attribute + property — the IANA name, e.g. `'Europe/Berlin'`. Defaults to the local zone. |
+| `value` | property — kept in lock-step with `timezone`; setting either fires `change`. |
+| `zone` | read-only [`Timezone`](/timezones/) — `{ name, abbr, offset }`. |
+| `region` | read-only `Region` — the map region backing the current zone, if any. |
+
+Assigning a name the runtime doesn't know is rejected: `value` reverts to the last valid
+zone rather than leaving the element in an impossible state.
+
+## Styling
+
+Everything is a CSS custom property, so you can theme the picker from outside the shadow
+DOM. The element is 500×250 at `--scale: 1`.
+
+```html
+<tosijs-timezone-picker class="lava"></tosijs-timezone-picker>
+```
+```css
+.lava {
+  --map-ocean: #1d1f2b;
+  --map-land: #4a4458;
+  --hover-color: #7a6a9a;
+  --active-zone-color: #b4456f;
+  --active-color: #ee257b;
+  --font-color: white;
+  --input-bg: #0006;
+  --tooltip-bg: #ee257bee;
+}
+```
+
+| variable | what it does |
+| --- | --- |
+| `--scale` | scales the whole map (default `1` → 500×250) |
+| `--map-ocean`, `--map-land` | base map colors |
+| `--hover-color`, `--hover-target-color` | the hovered offset band, and the region under the pointer |
+| `--active-zone-color`, `--active-color` | the selected offset band, and the selected region |
+| `--focus-color` | keyboard-focus ring on the map |
+| `--transition` | region color transition |
+| `--tooltip-bg`, `--tooltip-color`, `--tooltip-font-size` | the hover/keyboard tooltip |
+| `--inset`, `--padding`, `--input-bg`, `--input-radius` | position and shape of the text field |
+| `--font-size`, `--font-color`, `--font-family` | the text field's type |
+
+The `map`, `tooltip`, `zoneName` and `liveRegion` shadow parts are exposed for anything
+custom properties can't reach:
+
+```css
+tosijs-timezone-picker::part(zoneName) { letter-spacing: 0.05em; }
+```
+
+## Keyboard & assistive tech
+
+The map is focusable. **←/→** step one GMT offset west/east (keeping roughly the same
+latitude), **↑/↓** move between zones within the current offset, north to south. Each move
+announces the zone through a visually-hidden `aria-live` region and shows the same tooltip
+the mouse does.
+
+## Consuming it as a blueprint
+
+The component is written as a [tosijs blueprint](https://tosijs.net/blueprint-loader/) — a
+pure function that receives tosijs and returns a component class. That means it carries no
+copy of tosijs, and **you** choose the tag name, so two versions can coexist on one page:
+
+    <tosi-loader>
+      <tosi-blueprint
+        tag="my-timezone-picker"
+        src="https://cdn.jsdelivr.net/npm/tosijs-timezone-picker/dist/blueprint.js"
+      ></tosi-blueprint>
+    </tosi-loader>
+    <my-timezone-picker></my-timezone-picker>
+
+…or, if you are already bundling:
+
+```typescript
+import { makeComponent } from 'tosijs'
+import blueprint from 'tosijs-timezone-picker/blueprint'
+
+const { creator } = await makeComponent('my-timezone-picker', blueprint)
+document.body.append(creator())
+```
+
+Importing the package normally does exactly this for you, with the tag
+`<tosijs-timezone-picker>`.
+*/
+
+/*
+Eager registration of `<tosijs-timezone-picker>`.
+
+The component itself lives in `blueprint.ts` as a pure `XinBlueprint` — a function that
+receives tosijs and returns a class — so it can also be loaded from a CDN at runtime by
+`<tosi-blueprint>`. This module is the other shipping shape: it hydrates that blueprint
+once, synchronously, against the statically-imported tosijs, so
+`import 'tosijs-timezone-picker'` still just registers the element.
+
+`makeComponent()` is deliberately NOT used here: it is async, and awaiting it would turn
+`TimezonePicker` / `timezonePicker` into promises — a breaking change for every consumer.
+It builds the same class; only the timing differs.
+*/
+
+import { Component, elements, varDefault, XinFactory } from 'tosijs'
 import {
-  localTimezone,
-  timezones,
-  Timezone,
-  zoneId,
-  zoneFromName,
-  zoneFromId,
-  timezoneAliases,
-} from './timezones'
-import { regions, Region, regionId, zoneFromRegion } from './regions'
+  makeTimezonePickerClass,
+  TimezonePickerConstructor,
+  TimezonePickerElement,
+  TimezonePickerParts,
+} from './blueprint'
 
-const { fragment, div, span, option, input, datalist } = elements
+export type { TimezonePickerElement, TimezonePickerParts }
 
-const SVG_XMLNS = 'http://www.w3.org/2000/svg'
-const DATALIST_ID = '-timezone-list-'
+export const TAG_NAME = 'tosijs-timezone-picker'
 
-const regionKey = Symbol('region')
+// The blueprint only reaches for these three; the rest of XinFactory would be dead weight
+// in the bundle (and `boxedProxy` is deprecated).
+const factory = { Component, elements, varDefault } as unknown as XinFactory
 
-// unique offsets sorted west to east
-const offsets = [...new Set(regions.map((r) => r.offset))].sort((a, b) => a - b)
-
-// centroid Y of a region's polygon (lower = more north in SVG coords)
-const regionCenterY = (region: Region): number => {
-  const ys = region.points.split(',').filter((_, i) => i % 2 === 1).map(Number)
-  return ys.reduce((a, b) => a + b, 0) / ys.length
-}
-
-// one representative region per timezone per offset, sorted north to south
-const regionsByOffset = new Map<number, Region[]>()
-for (const offset of offsets) {
-  const offsetRegions = regions.filter((r) => r.offset === offset)
-  const seen = new Set<string>()
-  const unique: Region[] = []
-  for (const r of offsetRegions) {
-    if (!seen.has(r.timezone)) {
-      seen.add(r.timezone)
-      unique.push(r)
-    }
-  }
-  regionsByOffset.set(offset, unique.sort((a, b) => regionCenterY(a) - regionCenterY(b)))
-}
-
-const timezoneMap = (): any => {
-  const svg = document.createElementNS(SVG_XMLNS, 'svg')
-  svg.setAttribute('viewBox', '0 0 500 250')
-  svg.setAttribute('alt', 'world timezone map')
-  svg.append(
-    ...regions.map((region) => {
-      const polygon = document.createElementNS(SVG_XMLNS, 'polygon')
-      polygon.setAttribute('points', region.points)
-      polygon[regionKey] = region
-      return polygon
-    }),
-  )
-  return svg
-}
-
-const timezoneDatalist = datalist(
-  { id: DATALIST_ID },
-  ...timezones.map((tz) => option({ value: zoneId(tz) })),
-)
-
-export class TimezonePicker extends Component {
-  value = localTimezone.name
-  private _navRegion: Region | undefined
-
-  static preferredTagName = 'tosijs-timezone-picker'
-
-  static initAttributes = {
-    timezone: localTimezone.name,
-  }
-
-  static shadowStyleSpec = {
-    ':host': {
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'relative',
-      width: `calc(500px * var(--scale, 1))`,
-      height: `calc(250px * var(--scale, 1))`,
-      overflow: 'hidden',
-    },
-    '.map': {
-      background: 'var(--map-ocean, #79b)',
-      flex: '1 1 auto',
-      overflow: 'hidden',
-      outline: 'none',
-    },
-    '.map:focus': {
-      boxShadow: 'inset 0 0 0 3px var(--focus-color, #fffc)',
-    },
-    '.map, svg': {
-      width: '100%',
-      height: '100%',
-    },
-    polygon: {
-      transition: 'var(--transition, ease-out 0.3s)',
-      fill: 'var(--map-land, #555)',
-      stroke: 'var(--map-land, #555)',
-      strokeWidth: 0.5,
-    },
-    'polygon.hover': {
-      fill: 'var(--hover-color, #888)',
-      stroke: 'var(--hover-color, #888)',
-    },
-    'polygon.hover-target': {
-      fill: 'var(--hover-target-color, #444)',
-      stroke: 'var(--hover-target-color, #444)',
-    },
-    'polygon.active': {
-      fill: `var(--active-zone-color, #777)`,
-      stroke: `var(--active-zone-color, #777)`,
-    },
-    'polygon.active-target': {
-      fill: `var(--active-color, #333)`,
-      stroke: `var(--active-color, #333)`,
-    },
-    'polygon.offset': {
-      filter: `var(--offset-filter, brightness(0.75))`,
-    },
-    '.tooltip': {
-      position: 'absolute',
-      pointerEvents: 'none',
-      background: 'var(--tooltip-bg, #000c)',
-      color: 'var(--tooltip-color, white)',
-      fontFamily: 'var(--font-family, Sans-serif)',
-      fontSize: 'var(--tooltip-font-size, 11px)',
-      padding: '1px 8px',
-      borderRadius: '3px',
-      whiteSpace: 'nowrap',
-      display: 'none',
-      zIndex: '1',
-    },
-    '.tooltip.visible': {
-      display: 'block',
-    },
-    '.sr-only': {
-      position: 'absolute',
-      width: '1px',
-      height: '1px',
-      padding: '0',
-      margin: '-1px',
-      overflow: 'hidden',
-      clip: 'rect(0,0,0,0)',
-      whiteSpace: 'nowrap',
-      border: '0',
-    },
-    '.zone-name': {
-      fontFamily: 'var(--font-family, Sans-serif)',
-      position: 'absolute',
-      bottom: `var(--inset, 10px)`,
-      left: `var(--inset, 10px)`,
-      right: `var(--inset, 10px)`,
-      color: 'var(--font-color, white)',
-      fontSize: 'var(--font-size, 16px)',
-      padding: `calc(var(--padding, 10px))`,
-      background: 'var(--input-bg, #fff4)',
-      borderRadius: 'var(--input-radius, 5px)',
-      textAlign: 'center',
-      border: 'none',
-      outline: 'none',
-      /* firefox bug */
-      width: 'calc(100% - var(--inset, 10px) * 4)',
-    },
-  }
-
-  get zone(): Timezone {
-    return zoneFromName(this.timezone) as Timezone
-  }
-
-  get region(): Region | undefined {
-    return regions.find((rg) => rg.timezone === this.timezone)
-      ?? regions.find((rg) => timezoneAliases[rg.timezone] === this.timezone)
-  }
-
-  get zoneId(): string {
-    return zoneId(this.zone)
-  }
-
-  content = fragment(
-    div({
-      class: 'map',
-      part: 'map',
-      tabindex: '0',
-      role: 'application',
-      ariaLabel: 'timezone map',
-      ariaRoledescription: 'timezone picker',
-      ariaDescribedby: '-tz-tooltip-',
-    }),
-    span({
-      class: 'tooltip',
-      part: 'tooltip',
-      id: '-tz-tooltip-',
-      role: 'tooltip',
-    }),
-    span({
-      class: 'sr-only',
-      part: 'liveRegion',
-      ariaLive: 'polite',
-      ariaAtomic: 'true',
-    }),
-    input({
-      ariaLabel: 'timezone name, including GMT offset',
-      placeholder: 'region/city GMT+x',
-      class: 'zone-name',
-      part: 'zoneName',
-    }),
-    timezoneDatalist,
-  )
-
-  private showTooltip(region: Region, polygon: Element) {
-    const { tooltip } = this.parts
-    const polyRect = polygon.getBoundingClientRect()
-    const hostRect = this.getBoundingClientRect()
-    tooltip.textContent = regionId(region)
-    tooltip.classList.add('visible')
-    const tipRect = tooltip.getBoundingClientRect()
-    let x = (polyRect.left + polyRect.right) / 2 - hostRect.left - tipRect.width / 2
-    let y = polyRect.bottom - hostRect.top + 4
-    x = Math.max(0, Math.min(x, hostRect.width - tipRect.width))
-    y = Math.max(0, Math.min(y, hostRect.height - tipRect.height))
-    // @ts-expect-error
-    tooltip.style.left = `${x}px`
-    // @ts-expect-error
-    tooltip.style.top = `${y}px`
-    // @ts-expect-error
-    tooltip.style.transform = ''
-  }
-
-  private hideTooltip() {
-    this.parts.tooltip.classList.remove('visible')
-  }
-
-  private polygonForRegion(region: Region): Element | undefined {
-    const { map } = this.parts
-    return [...map.querySelectorAll('polygon')].find((p) => p[regionKey] === region)
-  }
-
-  hoverRegion = (event: Event): void => {
-    // @ts-expect-error
-    const region = event.target[regionKey] as Region | undefined
-    this.updateRegions(region, 'hover')
-    const { map } = this.parts
-    ;[...map.querySelectorAll('polygon')].forEach((polygon) => {
-      polygon.classList.toggle('hover-target', polygon[regionKey] === region)
-    })
-    if (region) {
-      this.showTooltip(region, event.target as Element)
-    } else {
-      this.hideTooltip()
-    }
-  }
-
-  pickRegion = (event: Event): void => {
-    const { zoneName } = this.parts
-    // @ts-expect-error
-    const region = event.target[regionKey]
-    if (region === undefined) {
-      return
-    }
-    const zone = zoneFromRegion(region)
-    if (zone !== undefined) {
-      this._navRegion = region
-      zoneName.value = this.zoneId
-      this.value = this.timezone = zone.name
-    }
-  }
-
-  pickZone = (event: Event): void => {
-    const { zoneName } = this.parts
-    // @ts-expect-error
-    const id = event.target.value
-    const zone = zoneFromId(id)
-    if (zone !== undefined) {
-      this._navRegion = undefined
-      this.value = this.timezone = zone.name
-    } else {
-      zoneName.value = this.zoneId
-    }
-  }
-
-  focusInput = (event: Event): void => {
-    // @ts-expect-error
-    event.target.select()
-  }
-
-  handleKeydown = (event: KeyboardEvent): void => {
-    const { key } = event
-    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) return
-    event.preventDefault()
-
-    const currentRegion = this._navRegion ?? this.region
-    const currentOffset = currentRegion?.offset ?? this.zone?.offset ?? 0
-    const offsetIndex = offsets.indexOf(currentOffset)
-
-    if (key === 'ArrowLeft' || key === 'ArrowRight') {
-      const dir = key === 'ArrowLeft' ? -1 : 1
-      const newIndex = (offsetIndex + dir + offsets.length) % offsets.length
-      const newOffset = offsets[newIndex]
-      const zoneRegions = regionsByOffset.get(newOffset)!
-      // pick the region closest in latitude to current
-      const currentY = currentRegion ? regionCenterY(currentRegion) : 125
-      const closest = zoneRegions.reduce((best, r) =>
-        Math.abs(regionCenterY(r) - currentY) < Math.abs(regionCenterY(best) - currentY) ? r : best,
-      )
-      this.selectRegion(closest)
-    } else {
-      const zoneRegions = regionsByOffset.get(currentOffset)!
-      let currentIndex = currentRegion
-        ? zoneRegions.findIndex((r) => r.timezone === currentRegion.timezone)
-        : -1
-      if (currentIndex === -1) currentIndex = 0
-      const dir = key === 'ArrowUp' ? -1 : 1
-      const newIndex = (currentIndex + dir + zoneRegions.length) % zoneRegions.length
-      this.selectRegion(zoneRegions[newIndex])
-    }
-  }
-
-  private announce(region: Region) {
-    const { liveRegion } = this.parts
-    liveRegion.textContent = regionId(region)
-  }
-
-  private selectRegion(region: Region) {
-    const zone = zoneFromRegion(region)
-    if (zone !== undefined) {
-      this._navRegion = region
-      this.value = this.timezone = zone.name
-      this.announce(region)
-      const polygon = this.polygonForRegion(region)
-      if (polygon) {
-        this.showTooltip(region, polygon)
-      }
-    }
-  }
-
-  connectedCallback() {
-    super.connectedCallback()
-
-    const { map, zoneName } = this.parts
-    zoneName.setAttribute('list', DATALIST_ID)
-    if (map.querySelector('svg') === null) {
-      map.append(timezoneMap())
-    }
-    map.addEventListener('mouseover', this.hoverRegion)
-    map.addEventListener('click', this.pickRegion)
-    map.addEventListener('keydown', this.handleKeydown)
-    zoneName.addEventListener('change', this.pickZone)
-    zoneName.addEventListener('focus', this.focusInput)
-  }
-
-  private validate() {
-    if (this.value !== this.timezone) {
-      const newZone = zoneFromName(this.value)
-      if (newZone === undefined) {
-        this.value = this.timezone
-      }
-    }
-  }
-
-  private updateRegions(region: Region | undefined, className: string) {
-    const { map } = this.parts
-    ;[...map.querySelectorAll(`polygon`)].forEach((polygon) => {
-      const rg = polygon[regionKey] as Region
-      polygon.classList.toggle(
-        className,
-        rg === region || rg.offset === region?.offset,
-      )
-    })
-  }
-
-  render() {
-    super.render()
-    this.validate()
-    this.updateRegions(this.region, 'active')
-    const { map, zoneName } = this.parts
-    const activeRegion = this.region
-    ;[...map.querySelectorAll('polygon')].forEach((polygon) => {
-      polygon.classList.toggle('active-target', polygon[regionKey] === activeRegion)
-    })
-    zoneName.value = this.zoneId
-  }
-}
+export const TimezonePicker: TimezonePickerConstructor =
+  makeTimezonePickerClass(factory)
+TimezonePicker.preferredTagName = TAG_NAME
 
 export const timezonePicker = TimezonePicker.elementCreator()

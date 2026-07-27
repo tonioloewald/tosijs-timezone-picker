@@ -1,19 +1,31 @@
 {
   "name": "tosijs-timezone-picker",
-  "version": "0.5.3",
+  "version": "0.6.0",
   "description": "a lightweight, mobile-friendly, self-contained timezone-picker web-component",
   "source": "src/index.ts",
+  "type": "module",
   "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "homepage": "https://timezones.tosijs.net",
   "exports": {
-    "import": "./dist/index.js",
-    "browser": "./dist/index.js",
-    "default": "./dist/index.js",
-    "types": "./dist/index.d.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "browser": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./blueprint": {
+      "types": "./dist/blueprint.d.ts",
+      "import": "./dist/blueprint.js",
+      "default": "./dist/blueprint.js"
+    }
   },
   "scripts": {
-    "start": "bun --watch dev.ts",
-    "build": "bun build.ts",
-    "test": "bun test"
+    "start": "bun bin/site.ts",
+    "build": "bun bin/site.ts --build",
+    "test": "bun test",
+    "tls": "bunx tosijs-dev-certs"
   },
   "keywords": [
     "tosijs",
@@ -31,17 +43,25 @@
     "url": "https://github.com/tonioloewald/tosijs-timezone-picker.git"
   },
   "devDependencies": {
-    "bun-types": "latest",
-    "typescript": "^5.0.4"
+    "@happy-dom/global-registrator": "^20.11.1",
+    "bun-types": "^1.3.14",
+    "happy-dom": "^20.11.1",
+    "tosijs": "^1.7.5",
+    "tosijs-ui": "^1.7.1",
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "tosijs": "^1.5.2"
+    "tosijs": "^1.7.5"
   },
   "files": [
-    "/cdn",
-    "/dist",
-    "/LICENSE",
-    "/README.md"
-  ],
-  "type": "module"
+    "dist/index.js",
+    "dist/index.js.map",
+    "dist/blueprint.js",
+    "dist/blueprint.js.map",
+    "dist/*.d.ts",
+    "cdn/index.js",
+    "cdn/index.js.map",
+    "LICENSE",
+    "README.md"
+  ]
 }

@@ -1,103 +1,126 @@
 # tosijs-timezone-picker
 
+<!--{ "headTitle": "tosijs-timezone-picker — a graphical timezone picker web-component", "description": "A lightweight, mobile-friendly timezone-picker web-component: an interactive SVG world map plus offset-aware autocomplete, with no timezone dataset to ship.", "keywords": [ "timezone", "web-component", "tosijs", "picker", "Intl" ] }-->
+
 [demo](https://timezones.tosijs.net/) | [github](https://github.com/tonioloewald/tosijs-timezone-picker#readme) | [npm](https://www.npmjs.com/package/tosijs-timezone-picker) | ![bundlejs](https://deno.bundlejs.com/?q=tosijs-timezone-picker&badge=)
 
-Copyright ©2023 Tonio Loewald
+A [web-component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) that
+provides a graphical timezone picker, inspired by Apple's. Click the map, arrow-key around
+it, or type — the field autocompletes on the timezone name **and** the GMT offset, so `Los`
+and `-7` both get you to `America/Los_Angeles`.
 
-This is a [web-component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) 
-that provides a graphical timezone picker, inspired by Apple's graphical timezone picker.
+```html
+<tosijs-timezone-picker></tosijs-timezone-picker>
+```
+```css
+tosijs-timezone-picker {
+  --scale: 0.9;
+  --active-color: #ee257b;
+  --active-zone-color: #f273aa;
+  --map-land: #aaa;
+  --map-ocean: #ccd;
+  --font-color: black;
+}
+```
 
-`<tosijs-timezone-picker>` has been made as compact and fast-loading as possible, by keeping the geometry to a minimum,
-using data provided by `Intl` where possible, and generating the underlying SVG
-data on-the-fly.
+It is made as compact and fast-loading as possible by keeping the geometry to a minimum,
+taking everything it can from [`Intl`](/timezones/) at runtime, and generating the SVG
+on-the-fly. There is no timezone dataset in the package, and no network request at all.
 
-The widget is designed so that the `value` of the `<tosijs-timezone-picker>` element will always
-be a valid IANA timezone name, and it supports both a graphical picker and `autocomplete`
-based on the timezone name *and* the GMT offset, so you can get to "America/Los_Angeles"
-by typing "Los" or "-7".
+## Install
 
-## Usage
+```bash
+bun add tosijs-timezone-picker      # or npm / yarn / pnpm
+```
 
-### HTML
+`tosijs` is a peer dependency, so your app ships exactly one copy of it.
 
-    import 'tosijs-timezone-picker'
+## Use it
 
-And now you can use:
+### As an element
+
+```typescript
+import 'tosijs-timezone-picker'
+```
 
     <tosijs-timezone-picker timezone="Australia/Sydney"></tosijs-timezone-picker>
 
 ### Programmatically
 
-    import { timezonePicker } from 'tosijs-timezone-picker'
-    document.body.append(timezonePicker())
+```typescript
+import { timezonePicker } from 'tosijs-timezone-picker'
 
-`timezonePicker` is a standard `tosijs` `ElementCreator`, i.e. a function that takes
-`ElementPart` parameters and returns an `element` of the type expected.
+document.body.append(timezonePicker({ timezone: 'Europe/Rome' }))
+```
 
-You can also obtain TimezonePicker, the class constructor for `<tosijs-timezone-picker>`.
+`timezonePicker` is a standard tosijs `ElementCreator` — a function that takes
+`ElementPart` parameters and returns the element. `TimezonePicker`, the class behind
+the tag, is exported too.
 
-### timezones, localTimezone, Timezone
+### From a CDN, with your own tag name
 
-Rather than using a static dataset of timezones, <tosijs-timezone-picker> uses the 
-[Intl](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl)
-Javascript global to build `timezones` and determine the `localTimezone`. This
-both reduces the size of this component considerably and ensures it will match
-the behavior of the runtime environment exactly.
+The component is written as a [tosijs blueprint](https://tosijs.net/blueprint-loader/), so
+it can be loaded at runtime with no build step — and the *consumer* picks the tag name:
 
-These are respectively of type `Timezone[]` and a `Timezone`, where:
+    <script type="module" src="https://cdn.jsdelivr.net/npm/tosijs/dist/module.js"></script>
+    <tosi-loader>
+      <tosi-blueprint
+        tag="my-timezone-picker"
+        src="https://cdn.jsdelivr.net/npm/tosijs-timezone-picker/dist/blueprint.js"
+      ></tosi-blueprint>
+    </tosi-loader>
+    <my-timezone-picker></my-timezone-picker>
 
-    interface Timezone {
-      name: string    // the IANA name
-      offset: number  // the offset from GMT in hours
-      utc: string     // the timezone's UTC offset
-    }
+## The value
+
+`value` and `timezone` are two names for one thing, and both always hold a **valid IANA
+timezone name**. Setting either updates the other and fires `change`; setting a name the
+runtime doesn't know is rejected rather than accepted into an impossible state.
+
+Full attribute, property, styling and keyboard reference:
+[`<tosijs-timezone-picker>`](/timezone-picker/).
+
+## timezones, localTimezone, Timezone
+
+Rather than shipping a static dataset, this package builds its zone list from
+[`Intl`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl)
+at import time. That keeps the component small *and* guarantees it agrees with the runtime
+it is running in — including the current DST state. See [timezones](/timezones/).
+
+```typescript
+interface Timezone {
+  name: string       // the IANA name
+  shortName?: string // e.g. 'America/Knox' for 'America/Indiana/Knox'
+  abbr: string       // the runtime's short name, e.g. 'PDT'
+  offset: number     // hours from GMT — fractional zones are decimals (5.5, 5.75, -3.5)
+}
+```
 
 ## Styling
 
-You can style the <tosijs-timezone-picker> by using [CSS-Variables](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_cascading_variables)
-
-By default, the `<tosijs-timezone-picker>` is 400px wide and 231px tall.
-
-`--scale` scales the map as a whole.
-
-`--map-ocean` and `--map-land` set the map colors.
-
-`--active-color`, `--hover-opacity`, `--active-opacity` set the timezone colors.
-
-`--hover-transition` controls the animated transition of the timezones.
-
-`--inset`, `--padding`, `--input-bg`, `--input-radius`, position the timezone `<input>`.
-
-`--font-size`, `--font-color`, and `--font-family` control the text of the `<input>`
+Everything is a CSS custom property, so you can theme the picker from outside its shadow
+DOM without `::part` gymnastics — `--scale`, `--map-ocean`, `--map-land`, `--active-color`,
+`--tooltip-bg` and the rest are listed on the [component page](/timezone-picker/).
 
 ## Annoyances
 
-I'm using the built-in support for filtered autocomplete in the `<input>` field
-where you type in the timezone manually. I figure most people simply won't use
-this, but for those who do its behavior is highly dependent on the browser implementation.
-E.g. Chrome is absolutely horrible (the menu jumps around randomly as you type) while
-Firefox and Safari work beautifully.
-
-Ideally I'd switch out the `<input>` field for `tosijs-ui`'s editable `<tosi-select>`
-(and implement filtering…) but that would increase the size of this component
-significantly and really Chrome should fix its shit.
+The text field uses the browser's built-in `<datalist>` autocomplete. Most people will
+never type a zone name, but for those who do, its behavior is entirely the browser's:
+Firefox and Safari are lovely, Chrome's menu jumps around as you type. Swapping in
+tosijs-ui's editable `<tosi-select>` would fix it and roughly double the component's size,
+so it stays as it is.
 
 ## Acknowledgements
 
-I've built on data I found in Keval Bhatt's excellent jQuery-based picker,
-found here https://github.com/kevalbhatt/timezone-picker
+Built on region data from Keval Bhatt's excellent jQuery-based
+[timezone-picker](https://github.com/kevalbhatt/timezone-picker). These things are a huge
+pain to get right — an SVG map I had paid for got binned in favour of Keval's data. Bravo!
 
-These things are a huge pain-in-the-ass to get right, and I actually ditched
-an SVG file I had paid to have built in favor of Keval's data. Bravo!
+To improve the geometry, [IANA's page](https://data.iana.org/time-zones/tz-link.html) is
+the place to start: there are tools that build GeoJSON timezone layers, and a fairly simple
+transformation would give exactly correct polygons. The `polygons` module could then
+simplify them — the raw GeoJSON is over 100MB.
 
-If you want to vastly improve this widget, a good place to start looking is
-[IANA's web page](https://data.iana.org/time-zones/tz-link.html) which discusses
-not only their data, but other sources, and links to tools to build your own.
+## License
 
-Fundamentally, there are tools out there to build GeoJSON layers for timezones
-and, combined with a fairly simple transformation (if you want to overlay one
-a compressed projection vs. on, say, a mapbox view), would give you the exact
-correct polygon data. The `polygons` module could then be used to simplify the
-polygons (the raw GeoJSON data is over 100MB!).
-
-This is the approach I'd take if someone were actually paying me for this…
+MIT. Copyright ©2023-2026 Tonio Loewald.
