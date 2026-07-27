@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://timezones.tosijs.net/</loc></url>
   <url><loc>https://timezones.tosijs.net/timezone-picker/</loc></url>
   <url><loc>https://timezones.tosijs.net/components/</loc></url>
   <url><loc>https://timezones.tosijs.net/index/</loc></url>
   <url><loc>https://timezones.tosijs.net/reference/</loc></url>
   <url><loc>https://timezones.tosijs.net/regions/</loc></url>
   <url><loc>https://timezones.tosijs.net/timezones/</loc></url>
-  <url><loc>https://timezones.tosijs.net/</loc></url>
 </urlset>

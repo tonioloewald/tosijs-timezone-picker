@@ -24,18 +24,15 @@ var zoneAbbr = (name) => Intl.DateTimeFormat("en-GB", {
   timeZoneName: "short",
   timeZone: name
 }).format(timeNow).split(" ").pop();
-var timezones = Intl.supportedValuesOf("timeZone").map((name) => {
-  const tz = {
-    name,
-    abbr: zoneAbbr(name),
-    offset: zoneOffset(name)
-  };
+var buildZone = (name) => {
+  const tz = { name, abbr: zoneAbbr(name), offset: zoneOffset(name) };
   const parts = name.split("/");
   if (parts.length === 3) {
     tz.shortName = `${parts[0]}/${parts[2]}`;
   }
   return tz;
-});
+};
+var timezones = Intl.supportedValuesOf("timeZone").map(buildZone);
 var timezoneAliases = {
   "Africa/Asmera": "Africa/Asmara",
   "Africa/Asmara": "Africa/Asmera",
@@ -65,7 +62,21 @@ var timezoneAliases = {
   "Australia/Currie": "Australia/Hobart",
   "Pacific/Johnston": "Pacific/Honolulu"
 };
-var zoneFromName = (name) => timezones.find((tz) => tz.name === name || tz.shortName === name) ?? timezones.find((tz) => tz.name === timezoneAliases[name]);
+var askedIntl = new Map;
+var zoneFromIntl = (name) => {
+  if (!askedIntl.has(name)) {
+    let zone;
+    try {
+      Intl.DateTimeFormat("en-GB", { timeZone: name });
+      zone = buildZone(name);
+    } catch {
+      zone = undefined;
+    }
+    askedIntl.set(name, zone);
+  }
+  return askedIntl.get(name);
+};
+var zoneFromName = (name) => timezones.find((tz) => tz.name === name || tz.shortName === name) ?? timezones.find((tz) => tz.name === timezoneAliases[name]) ?? zoneFromIntl(name);
 var zoneId = (tz) => {
   const name = tz.shortName !== undefined ? tz.shortName : tz.name;
   const { offset } = tz;
@@ -2940,7 +2951,7 @@ var makeTimezonePickerClass = (module) => {
     synced = localTimezone.name;
     polygons = [];
     get zone() {
-      return zoneFromName(this.timezone);
+      return zoneFromName(this.timezone) ?? localTimezone;
     }
     get region() {
       return regions.find((rg) => rg.timezone === this.timezone) ?? regions.find((rg) => timezoneAliases[rg.timezone] === this.timezone);
@@ -3075,8 +3086,11 @@ var makeTimezonePickerClass = (module) => {
       if (value !== timezone) {
         if (value !== this.synced && zoneFromName(value) !== undefined) {
           this.timezone = value;
-        } else {
+        } else if (zoneFromName(timezone) !== undefined) {
           this.value = timezone;
+        } else {
+          console.warn(`<${this.tagName.toLowerCase()}>: unknown timezone ${JSON.stringify(value === this.synced ? timezone : value)}, keeping ${JSON.stringify(this.synced)}`);
+          this.value = this.timezone = this.synced;
         }
       }
       this.synced = this.timezone;
@@ -3141,4 +3155,4 @@ export {
   TAG_NAME
 };
 
-//# debugId=3B49E427C50A3C0964756E2164756E21
+//# debugId=7AAB63D67AEA639064756E2164756E21

@@ -78,15 +78,35 @@ zone it doesn&#39;t otherwise list.</li>
 <code>&#39;America/Los Angeles GMT-7&#39;</code>.</li>
 <li><strong><code>zoneFromId(id)</code></strong> — the inverse of <code>zoneId</code>.</li>
 </ul>
-<h2>Timezone aliases</h2>
-<p>IANA renames zones (<code>Europe/Kiev</code> → <code>Europe/Kyiv</code>, <code>Asia/Calcutta</code> → <code>Asia/Kolkata</code>) and
-runtimes disagree about which name they report. <code>timezoneAliases</code> maps the pairs both
-ways so a zone named either way still finds its region on the map — see
-<a href="/regions/">regions</a>.</p>
+<h2>Renamed zones, and why <code>zoneFromName</code> asks twice</h2>
+<p>IANA renames zones — <code>Europe/Kiev</code> → <code>Europe/Kyiv</code>, <code>Asia/Calcutta</code> → <code>Asia/Kolkata</code>,
+<code>Asia/Rangoon</code> → <code>Asia/Yangon</code> — and <strong>engines disagree about which name they admit to</strong>.
+The two <code>Intl</code> APIs disagree with each other, too:</p>
+<ul>
+<li><code>Intl.supportedValuesOf(&#39;timeZone&#39;)</code> <strong>enumerates</strong> one name per zone, and which half of
+a renamed pair you get is per-engine. V8 tends to list the new name, JavaScriptCore the
+old one. Neither tells you the other exists.</li>
+<li><code>Intl.DateTimeFormat</code> <strong>accepts</strong> both halves, plus legacy links the enumeration never
+mentions (<code>US/Pacific</code>, <code>Asia/Chongqing</code>, <code>Etc/GMT+5</code>), and throws <code>RangeError</code> only for
+a name that genuinely isn&#39;t a zone.</li>
+</ul>
+<p>So <code>zoneFromName</code> tries the enumerated list first (exact name, then <code>shortName</code>, then
+<code>timezoneAliases</code>), and finally asks <code>Intl.DateTimeFormat</code> whether the runtime will format
+it. The practical effect: a zone name your app stored years ago keeps resolving after IANA
+retires it, on whichever engine your user shows up with, <strong>without this package shipping a
+rename table that has to be maintained.</strong></p>
+<p><code>timezoneAliases</code> still earns its place — it is what lets a <em>map region</em> labelled with one
+spelling light up when the runtime uses the other. Names outside the enumeration resolve
+fine but have no polygon, so they are reachable by typing rather than by clicking.</p>
+<h2>Zones with no region on the map</h2>
+<p>The map&#39;s geometry predates a number of tzdb splits (<code>America/Ciudad_Juarez</code>,
+<code>America/Punta_Arenas</code>, <code>America/Coyhaique</code>…), and Antarctica has never had polygons. Those
+zones are selectable through the text field but can&#39;t be clicked. See <a href="/regions/">regions</a>.</p>
 
   </article>
   <nav class="doc-nav" aria-label="Documentation">
   <ul>
+    <li><a class="doc-link" href="/">tosijs-timezone-picker</a></li>
     <li><details><summary><a class="doc-link" href="/components/">components</a></summary>
     <ul>
       <li><a class="doc-link" href="/timezone-picker/">&lt;tosijs-timezone-picker&gt;</a></li>
@@ -99,7 +119,6 @@ ways so a zone named either way still finds its region on the map — see
       <li><a class="doc-link current" href="/timezones/" aria-current="page">timezones</a></li>
     </ul>
     </details></li>
-    <li><a class="doc-link" href="/">tosijs-timezone-picker</a></li>
   </ul>
   </nav>
   <ul class="doc-navbar">

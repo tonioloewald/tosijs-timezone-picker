@@ -30,6 +30,17 @@ API is unchanged: `import 'tosijs-timezone-picker'` still registers
 
 ### Fixed
 
+- **A zone name the engine doesn't enumerate no longer throws.** `Intl.supportedValuesOf`
+  and `Intl.DateTimeFormat` disagree about what exists: engines enumerate only one half of a
+  renamed pair (JavaScriptCore lists `Europe/Kiev`, V8 lists `Europe/Kyiv`) while both accept
+  either, plus legacy links (`US/Pacific`, `Asia/Chongqing`) that are never enumerated.
+  `zoneFromName` now falls back to asking `Intl.DateTimeFormat`, so a stored zone name keeps
+  resolving across engines and across future IANA renames without this package shipping a
+  rename table to maintain.
+- **Assigning an unknown zone after connect threw on every frame.** `picker.timezone = …` or
+  `setAttribute('timezone', …)` with a name the runtime rejects left the element in a state
+  its own `render()` couldn't survive (`zoneId()` on an undefined zone). Both properties are
+  now validated symmetrically: the element keeps the last zone they agreed on and warns.
 - **Quarter-hour timezones had `NaN` offsets.** The offset parser only understood `:30`, so
   Nepal (+5:45), Chatham (+12:45) and Eucla (+8:45) parsed as `NaN` — they showed no GMT
   offset in the picker and, because nothing compares equal to `NaN`, their regions were

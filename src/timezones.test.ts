@@ -62,3 +62,31 @@ test('zoneId spells out the offset', () => {
   expect(zoneId(la)).toBe(`America/Los Angeles GMT${la.offset}`)
   expect(zoneId(zoneFromName('UTC')!)).toBe('UTC GMT')
 })
+
+// supportedValuesOf() and DateTimeFormat disagree about what exists: engines list one half
+// of a rename and accept both. Anything the runtime will format must resolve, or an app
+// holding a stored zone name breaks when IANA retires it.
+test('zoneFromName accepts names Intl formats but does not list', () => {
+  const listed = new Set(timezones.map((tz) => tz.name))
+  const unlisted = ['US/Pacific', 'Asia/Chongqing', 'Etc/GMT+5'].filter(
+    (name) => !listed.has(name)
+  )
+  for (const name of unlisted) {
+    const zone = zoneFromName(name)
+    expect(zone === undefined ? name : zone.name).toBe(name)
+    expect(Number.isFinite(zone!.offset)).toBe(true)
+  }
+})
+
+test('both halves of a renamed pair resolve, whichever one the engine lists', () => {
+  for (const pair of [
+    ['Europe/Kiev', 'Europe/Kyiv'],
+    ['Asia/Calcutta', 'Asia/Kolkata'],
+    ['Asia/Rangoon', 'Asia/Yangon'],
+    ['America/Godthab', 'America/Nuuk'],
+  ]) {
+    const zones = pair.map((name) => zoneFromName(name))
+    expect(zones.filter((z) => z === undefined)).toEqual([])
+    expect(zones[0]!.offset).toBe(zones[1]!.offset)
+  }
+})

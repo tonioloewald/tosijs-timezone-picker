@@ -43,12 +43,34 @@ zones move by an hour twice a year and the map moves with them.
   `'America/Los Angeles GMT-7'`.
 - **`zoneFromId(id)`** — the inverse of `zoneId`.
 
-## Timezone aliases
+## Renamed zones, and why `zoneFromName` asks twice
 
-IANA renames zones (`Europe/Kiev` → `Europe/Kyiv`, `Asia/Calcutta` → `Asia/Kolkata`) and
-runtimes disagree about which name they report. `timezoneAliases` maps the pairs both
-ways so a zone named either way still finds its region on the map — see
-[regions](/regions/).
+IANA renames zones — `Europe/Kiev` → `Europe/Kyiv`, `Asia/Calcutta` → `Asia/Kolkata`,
+`Asia/Rangoon` → `Asia/Yangon` — and **engines disagree about which name they admit to**.
+The two `Intl` APIs disagree with each other, too:
+
+- `Intl.supportedValuesOf('timeZone')` **enumerates** one name per zone, and which half of
+  a renamed pair you get is per-engine. V8 tends to list the new name, JavaScriptCore the
+  old one. Neither tells you the other exists.
+- `Intl.DateTimeFormat` **accepts** both halves, plus legacy links the enumeration never
+  mentions (`US/Pacific`, `Asia/Chongqing`, `Etc/GMT+5`), and throws `RangeError` only for
+  a name that genuinely isn't a zone.
+
+So `zoneFromName` tries the enumerated list first (exact name, then `shortName`, then
+`timezoneAliases`), and finally asks `Intl.DateTimeFormat` whether the runtime will format
+it. The practical effect: a zone name your app stored years ago keeps resolving after IANA
+retires it, on whichever engine your user shows up with, **without this package shipping a
+rename table that has to be maintained.**
+
+`timezoneAliases` still earns its place — it is what lets a *map region* labelled with one
+spelling light up when the runtime uses the other. Names outside the enumeration resolve
+fine but have no polygon, so they are reachable by typing rather than by clicking.
+
+## Zones with no region on the map
+
+The map's geometry predates a number of tzdb splits (`America/Ciudad_Juarez`,
+`America/Punta_Arenas`, `America/Coyhaique`…), and Antarctica has never had polygons. Those
+zones are selectable through the text field but can't be clicked. See [regions](/regions/).
 */
 
 const timeNow = new Date()
@@ -89,22 +111,17 @@ const zoneAbbr = (name: string): string =>
     .split(' ')
     .pop() as string
 
-export const timezones: Timezone[] = Intl.supportedValuesOf('timeZone').map(
-  (name: string): Timezone => {
-    const tz: Timezone = {
-      name,
-      abbr: zoneAbbr(name),
-      offset: zoneOffset(name),
-    }
-
-    const parts = name.split('/')
-    if (parts.length === 3) {
-      tz.shortName = `${parts[0]}/${parts[2]}`
-    }
-
-    return tz
+const buildZone = (name: string): Timezone => {
+  const tz: Timezone = { name, abbr: zoneAbbr(name), offset: zoneOffset(name) }
+  const parts = name.split('/')
+  if (parts.length === 3) {
+    tz.shortName = `${parts[0]}/${parts[2]}`
   }
-)
+  return tz
+}
+
+export const timezones: Timezone[] =
+  Intl.supportedValuesOf('timeZone').map(buildZone)
 
 /** Map between deprecated and current IANA timezone names. */
 export const timezoneAliases: Record<string, string> = {
@@ -139,9 +156,34 @@ export const timezoneAliases: Record<string, string> = {
   'Pacific/Johnston': 'Pacific/Honolulu',
 }
 
+const askedIntl = new Map<string, Timezone | undefined>()
+
+/**
+ * Last resort: ask the runtime directly. `Intl.DateTimeFormat` accepts far more names
+ * than `supportedValuesOf` lists — legacy links (`US/Pacific`, `Asia/Chongqing`) and, in
+ * practice, whichever half of a rename the list left out (this runtime lists
+ * `Europe/Kiev` but accepts `Europe/Kyiv`). It throws `RangeError` for a name that really
+ * doesn't exist, which makes it a validator that never needs updating when IANA renames
+ * something. Cached because zone lookups happen on render.
+ */
+const zoneFromIntl = (name: string): Timezone | undefined => {
+  if (!askedIntl.has(name)) {
+    let zone: Timezone | undefined
+    try {
+      Intl.DateTimeFormat('en-GB', { timeZone: name })
+      zone = buildZone(name)
+    } catch {
+      zone = undefined
+    }
+    askedIntl.set(name, zone)
+  }
+  return askedIntl.get(name)
+}
+
 export const zoneFromName = (name: string): Timezone | undefined =>
   timezones.find((tz) => tz.name === name || tz.shortName === name) ??
-  timezones.find((tz) => tz.name === timezoneAliases[name])
+  timezones.find((tz) => tz.name === timezoneAliases[name]) ??
+  zoneFromIntl(name)
 
 export const zoneId = (tz: Timezone): string => {
   const name = tz.shortName !== undefined ? tz.shortName : tz.name

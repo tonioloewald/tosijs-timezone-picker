@@ -1,11 +1,12 @@
 # tosijs-timezone-picker
 
-<!--{ "headTitle": "tosijs-timezone-picker — a graphical timezone picker web-component", "description": "A lightweight, mobile-friendly timezone-picker web-component: an interactive SVG world map plus offset-aware autocomplete, with no timezone dataset to ship.", "keywords": [ "timezone", "web-component", "tosijs", "picker", "Intl" ] }-->
+<!--{ "pin": "top", "order": 0, "headTitle": "tosijs-timezone-picker — a graphical timezone picker web-component", "description": "A lightweight, mobile-friendly timezone-picker web-component: an interactive SVG world map plus offset-aware autocomplete, with no timezone dataset to ship.", "keywords": [ "timezone", "web-component", "tosijs", "picker", "Intl" ] }-->
 
 [demo](https://timezones.tosijs.net/) | [github](https://github.com/tonioloewald/tosijs-timezone-picker#readme) | [npm](https://www.npmjs.com/package/tosijs-timezone-picker) | ![bundlejs](https://deno.bundlejs.com/?q=tosijs-timezone-picker&badge=)
 
 A [web-component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) that
-provides a graphical timezone picker, inspired by Apple's. Click the map, arrow-key around
+provides a graphical timezone picker, inspired by the one Apple used to provide before it
+gave up and gave you a drop-down. Click the map, arrow-key around
 it, or type — the field autocompletes on the timezone name **and** the GMT offset, so `Los`
 and `-7` both get you to `America/Los_Angeles`.
 
@@ -14,7 +15,8 @@ and `-7` both get you to `America/Los_Angeles`.
 ```
 ```css
 tosijs-timezone-picker {
-  --scale: 0.9;
+  width: 100%;
+  height: 100%;
   --active-color: #ee257b;
   --active-zone-color: #f273aa;
   --map-land: #aaa;

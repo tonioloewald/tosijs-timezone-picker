@@ -12,6 +12,13 @@ on **both** the zone name and the GMT offset, so `Los` and `-7` both get you to
 ```html
 <tosijs-timezone-picker timezone="Australia/Sydney"></tosijs-timezone-picker>
 ```
+```css
+tosijs-timezone-picker {
+  width: 100%;
+  height: 100%;
+}
+```
+
 ## Reading the value
 
 The element fires `change` when the user picks a zone — from the map, the keyboard, or the
@@ -22,6 +29,11 @@ text field.
 <div class="readout">—</div>
 ```
 ```css
+tosijs-timezone-picker {
+  width: 100%;
+  height: 100%;
+}
+
 .readout {
   font-family: monospace;
   padding: 10px 10px 40px;
@@ -49,13 +61,18 @@ show()
 | `zone` | read-only [`Timezone`](/timezones/) — `{ name, abbr, offset }`. |
 | `region` | read-only `Region` — the map region backing the current zone, if any. |
 
-Assigning a name the runtime doesn't know is rejected: `value` reverts to the last valid
-zone rather than leaving the element in an impossible state.
+Assigning a name the runtime doesn't know is rejected: the element keeps the last zone the
+two properties agreed on and warns, rather than landing in a state its own render can't
+survive. "Doesn't know" is decided by `Intl.DateTimeFormat`, not by
+`Intl.supportedValuesOf('timeZone')` — engines list only one half of a renamed pair while
+accepting both, so a stored `'Europe/Kyiv'` keeps working on an engine that only lists
+`'Europe/Kiev'`, and vice versa. See [timezones](/timezones/).
 
 ## Styling
 
 Everything is a CSS custom property, so you can theme the picker from outside the shadow
-DOM. The element is 500×250 at `--scale: 1`.
+DOM. The element is 500×250 at `--scale: 1`; set `width`/`height` (or `--scale`) to resize
+it — the map keeps its aspect ratio inside whatever box you give it.
 
 ```html
 <tosijs-timezone-picker class="lava"></tosijs-timezone-picker>
@@ -75,7 +92,7 @@ DOM. The element is 500×250 at `--scale: 1`.
 
 | variable | what it does |
 | --- | --- |
-| `--scale` | scales the whole map (default `1` → 500×250) |
+| `--scale` | scales the whole map (default `1` → 500×250); or set `width`/`height` directly |
 | `--map-ocean`, `--map-land` | base map colors |
 | `--hover-color`, `--hover-target-color` | the hovered offset band, and the region under the pointer |
 | `--active-zone-color`, `--active-color` | the selected offset band, and the selected region |

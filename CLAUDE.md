@@ -84,9 +84,14 @@ silently — run `bun tsc --noEmit` before calling a change done.
 
 - Pages come from `/*# … */` doc comments in `src/` plus `README.md` (the home page); config in
   `tosijs-timezone-picker-site.config.ts`; hydration bundle in `demo/site.ts`.
-- **Live examples hydrate asynchronously.** Screenshotting or querying the DOM immediately
-  after page load shows empty examples — that is a race in your harness, not a broken page.
-  Wait a beat before concluding anything.
+- **🚨 Live examples do not hydrate in a background tab, and nothing errors.** The page
+  serves, the bundle loads, the custom elements register — and the examples stay unbuilt
+  until the tab is foregrounded (Chrome throttles the callbacks the doc-system builds them
+  on). A screenshot or `querySelector` against an unfocused tab reports an empty page, so
+  an agent driving a browser will "confirm" a bug that isn't there and then "fix" whatever
+  it touched last. **Focus the tab, wait, and re-measure before believing a doc page is
+  broken** — and prefer measuring (`getBoundingClientRect`, element counts) over eyeballing
+  a downscaled screenshot, where the light default map colours wash out to white.
 - Only ` ```html `, ` ```css `, ` ```js `, ` ```test ` fences run; consecutive tagged fences
   group into one example. Use ` ```typescript ` or an indented block for illustrative code —
   in particular, the `<tosi-blueprint src="https://cdn.jsdelivr.net/…">` snippet must stay

@@ -52,13 +52,23 @@ on <strong>both</strong> the zone name and the GMT offset, so <code>Los</code> a
 <code>America/Los_Angeles</code>. <code>value</code> and <code>timezone</code> always hold a valid IANA timezone name.</p>
 <pre><code class="language-html">&lt;tosijs-timezone-picker timezone=&quot;Australia/Sydney&quot;&gt;&lt;/tosijs-timezone-picker&gt;
 </code></pre>
+<pre><code class="language-css">tosijs-timezone-picker {
+  width: 100%;
+  height: 100%;
+}
+</code></pre>
 <h2>Reading the value</h2>
 <p>The element fires <code>change</code> when the user picks a zone — from the map, the keyboard, or the
 text field.</p>
 <pre><code class="language-html">&lt;tosijs-timezone-picker id=&quot;picker&quot;&gt;&lt;/tosijs-timezone-picker&gt;
 &lt;div class=&quot;readout&quot;&gt;—&lt;/div&gt;
 </code></pre>
-<pre><code class="language-css">.readout {
+<pre><code class="language-css">tosijs-timezone-picker {
+  width: 100%;
+  height: 100%;
+}
+
+.readout {
   font-family: monospace;
   padding: 10px 10px 40px;
 }
@@ -99,11 +109,16 @@ show()
 <td>read-only <code>Region</code> — the map region backing the current zone, if any.</td>
 </tr>
 </tbody></table>
-<p>Assigning a name the runtime doesn&#39;t know is rejected: <code>value</code> reverts to the last valid
-zone rather than leaving the element in an impossible state.</p>
+<p>Assigning a name the runtime doesn&#39;t know is rejected: the element keeps the last zone the
+two properties agreed on and warns, rather than landing in a state its own render can&#39;t
+survive. &quot;Doesn&#39;t know&quot; is decided by <code>Intl.DateTimeFormat</code>, not by
+<code>Intl.supportedValuesOf(&#39;timeZone&#39;)</code> — engines list only one half of a renamed pair while
+accepting both, so a stored <code>&#39;Europe/Kyiv&#39;</code> keeps working on an engine that only lists
+<code>&#39;Europe/Kiev&#39;</code>, and vice versa. See <a href="/timezones/">timezones</a>.</p>
 <h2>Styling</h2>
 <p>Everything is a CSS custom property, so you can theme the picker from outside the shadow
-DOM. The element is 500×250 at <code>--scale: 1</code>.</p>
+DOM. The element is 500×250 at <code>--scale: 1</code>; set <code>width</code>/<code>height</code> (or <code>--scale</code>) to resize
+it — the map keeps its aspect ratio inside whatever box you give it.</p>
 <pre><code class="language-html">&lt;tosijs-timezone-picker class=&quot;lava&quot;&gt;&lt;/tosijs-timezone-picker&gt;
 </code></pre>
 <pre><code class="language-css">.lava {
@@ -126,7 +141,7 @@ DOM. The element is 500×250 at <code>--scale: 1</code>.</p>
 </thead>
 <tbody><tr>
 <td><code>--scale</code></td>
-<td>scales the whole map (default <code>1</code> → 500×250)</td>
+<td>scales the whole map (default <code>1</code> → 500×250); or set <code>width</code>/<code>height</code> directly</td>
 </tr>
 <tr>
 <td><code>--map-ocean</code>, <code>--map-land</code></td>
@@ -195,6 +210,7 @@ document.body.append(creator())
   </article>
   <nav class="doc-nav" aria-label="Documentation">
   <ul>
+    <li><a class="doc-link" href="/">tosijs-timezone-picker</a></li>
     <li><details open><summary><a class="doc-link" href="/components/">components</a></summary>
     <ul>
       <li><a class="doc-link current" href="/timezone-picker/" aria-current="page">&lt;tosijs-timezone-picker&gt;</a></li>
@@ -207,7 +223,6 @@ document.body.append(creator())
       <li><a class="doc-link" href="/timezones/">timezones</a></li>
     </ul>
     </details></li>
-    <li><a class="doc-link" href="/">tosijs-timezone-picker</a></li>
   </ul>
   </nav>
   <ul class="doc-navbar">

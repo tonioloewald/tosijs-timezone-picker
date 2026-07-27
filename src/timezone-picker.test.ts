@@ -122,3 +122,36 @@ test('the blueprint hydrates through makeComponent under any tag', async () => {
   expect(picker.value).toBe('Asia/Tokyo')
   expect(picker.shadowRoot!.querySelectorAll('polygon').length).toBe(regions.length)
 })
+
+// A zone name IANA has retired (or one the engine simply refuses) must not put the element
+// in a state its own render can't survive — this used to throw out of zoneId() on every
+// frame, from a property assignment or a setAttribute.
+test('an unknown timezone falls back instead of throwing', async () => {
+  const picker = mount({ timezone: 'Asia/Tokyo' })
+  await settled()
+
+  const warnings: unknown[] = []
+  const warn = console.warn
+  console.warn = (...args: unknown[]) => warnings.push(args[0])
+  try {
+    picker.timezone = 'Mordor/Barad-dur'
+    await settled()
+    expect(picker.timezone).toBe('Asia/Tokyo')
+    expect(picker.value).toBe('Asia/Tokyo')
+
+    picker.setAttribute('timezone', 'Mordor/Barad-dur')
+    await settled()
+    expect(picker.timezone).toBe('Asia/Tokyo')
+    expect(picker.zone.name).toBe('Asia/Tokyo')
+  } finally {
+    console.warn = warn
+  }
+  expect(warnings.length > 0).toBe(true)
+})
+
+test('a bogus timezone attribute at construction falls back to the local zone', async () => {
+  const picker = mount({ timezone: 'Mordor/Barad-dur' })
+  await settled()
+  expect(picker.timezone).toBe(localTimezone.name)
+  expect(picker.value).toBe(localTimezone.name)
+})

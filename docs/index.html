@@ -46,17 +46,19 @@
   <tosi-doc-system docs="/docs.json" config="{&quot;projectName&quot;:&quot;tosijs-timezone-picker&quot;,&quot;projectLinks&quot;:{&quot;tosijs&quot;:&quot;https://tosijs.net&quot;,&quot;github&quot;:&quot;https://github.com/tonioloewald/tosijs-timezone-picker&quot;}}">
   <article class="doc-content">
 <h1>tosijs-timezone-picker</h1>
-<!--{ "headTitle": "tosijs-timezone-picker — a graphical timezone picker web-component", "description": "A lightweight, mobile-friendly timezone-picker web-component: an interactive SVG world map plus offset-aware autocomplete, with no timezone dataset to ship.", "keywords": [ "timezone", "web-component", "tosijs", "picker", "Intl" ] }-->
+<!--{ "pin": "top", "order": 0, "headTitle": "tosijs-timezone-picker — a graphical timezone picker web-component", "description": "A lightweight, mobile-friendly timezone-picker web-component: an interactive SVG world map plus offset-aware autocomplete, with no timezone dataset to ship.", "keywords": [ "timezone", "web-component", "tosijs", "picker", "Intl" ] }-->
 
 <p><a href="https://timezones.tosijs.net/">demo</a> | <a href="https://github.com/tonioloewald/tosijs-timezone-picker#readme">github</a> | <a href="https://www.npmjs.com/package/tosijs-timezone-picker">npm</a> | <img src="https://deno.bundlejs.com/?q=tosijs-timezone-picker&badge=" alt="bundlejs"></p>
 <p>A <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components">web-component</a> that
-provides a graphical timezone picker, inspired by Apple&#39;s. Click the map, arrow-key around
+provides a graphical timezone picker, inspired by the one Apple used to provide before it
+gave up and gave you a drop-down. Click the map, arrow-key around
 it, or type — the field autocompletes on the timezone name <strong>and</strong> the GMT offset, so <code>Los</code>
 and <code>-7</code> both get you to <code>America/Los_Angeles</code>.</p>
 <pre><code class="language-html">&lt;tosijs-timezone-picker&gt;&lt;/tosijs-timezone-picker&gt;
 </code></pre>
 <pre><code class="language-css">tosijs-timezone-picker {
-  --scale: 0.9;
+  width: 100%;
+  height: 100%;
   --active-color: #ee257b;
   --active-zone-color: #f273aa;
   --map-land: #aaa;
@@ -139,6 +141,7 @@ simplify them — the raw GeoJSON is over 100MB.</p>
   </article>
   <nav class="doc-nav" aria-label="Documentation">
   <ul>
+    <li><a class="doc-link current" href="/" aria-current="page">tosijs-timezone-picker</a></li>
     <li><details><summary><a class="doc-link" href="/components/">components</a></summary>
     <ul>
       <li><a class="doc-link" href="/timezone-picker/">&lt;tosijs-timezone-picker&gt;</a></li>
@@ -151,7 +154,6 @@ simplify them — the raw GeoJSON is over 100MB.</p>
       <li><a class="doc-link" href="/timezones/">timezones</a></li>
     </ul>
     </details></li>
-    <li><a class="doc-link current" href="/" aria-current="page">tosijs-timezone-picker</a></li>
   </ul>
   </nav>
   <ul class="doc-navbar">

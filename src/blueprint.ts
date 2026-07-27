@@ -258,8 +258,10 @@ export const makeTimezonePickerClass = (
     /** this instance's polygons, cached: hover walks them on every mousemove */
     private polygons: Element[] = []
 
+    // validate() keeps `timezone` resolvable, but belt-and-braces: every render reads
+    // this, and an undefined zone here used to throw out of zoneId().
     get zone(): Timezone {
-      return zoneFromName(this.timezone) as Timezone
+      return zoneFromName(this.timezone) ?? localTimezone
     }
 
     get region(): Region | undefined {
@@ -426,15 +428,25 @@ export const makeTimezonePickerClass = (
      * `value` and `timezone` are two names for one selection, but they are separate
      * properties (`value` is tosijs's change-firing property; `timezone` is the
      * attribute), so either can move independently. Whichever one changed since they
-     * last agreed wins; an unknown name never does.
+     * last agreed wins; an unknown name never does — it falls back to the last name they
+     * agreed on, so an app that stores a zone name IANA has since retired degrades to the
+     * previous selection instead of putting the element in a state its own render can't
+     * survive.
      */
     private validate(): void {
       const { value, timezone } = this
       if (value !== timezone) {
         if (value !== this.synced && zoneFromName(value) !== undefined) {
           this.timezone = value
-        } else {
+        } else if (zoneFromName(timezone) !== undefined) {
           this.value = timezone
+        } else {
+          console.warn(
+            `<${this.tagName.toLowerCase()}>: unknown timezone ${JSON.stringify(
+              value === this.synced ? timezone : value
+            )}, keeping ${JSON.stringify(this.synced)}`
+          )
+          this.value = this.timezone = this.synced
         }
       }
       this.synced = this.timezone
